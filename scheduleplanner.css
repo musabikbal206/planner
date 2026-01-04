@@ -146,38 +146,3 @@ body.resizing {
     /* X ekseninde 20px sağa, Y ekseninde -45px yukarı */
     transform: translate(20px, -45px); 
 }
-
-/* scheduleplanner.css en altına ekle */
-
-/* Sürüklenen Hayalet Kutu */
-.dragging-ghost {
-    position: fixed;
-    z-index: 9999; 
-    pointer-events: none; 
-    opacity: 0.9;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    transform: scale(1.02) rotate(2deg); 
-    cursor: grabbing;
-    background-color: inherit; 
-    border-radius: 0.5rem;
-
-    /* EKLE: Marginleri kesin olarak sıfırla */
-    margin: 0 !important; 
-    margin-top: 0 !important;
-}
-
-.drag-tooltip {
-    /* Eski kodların aynısı kalsın, sadece z-index ayarı */
-    z-index: 10000; 
-}
-/* Orijinal kutu sürüklenirken biraz soluklaşsın */
-.event-card.is-being-dragged {
-    opacity: 0.3;
-    filter: grayscale(100%);
-}
-
-/* Tüm body için imleç ayarı */
-body.dragging-active {
-    cursor: grabbing !important;
-    user-select: none;
-}
