@@ -100,35 +100,35 @@ const INITIAL_EVENTS = [
     { id: 'mon3', day: 'Monday', start: '15:00', duration: 120, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
     { id: 'mon4', day: 'Monday', start: '17:00', duration: 60, title: 'Akşam Yemeği', type: 'meal', alarm: false }, 
     { id: 'mon5', day: 'Monday', start: '18:00', duration: 90, title: 'GENÇLİK MERKEZİ EĞİTİMİ', type: 'community', alarm: true },
-    { id: 'mon6', day: 'Monday', start: '19:30', duration: 360, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
+    { id: 'mon6', day: 'Monday', start: '19:30', duration: 270, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
 
     { id: 'tue1', day: 'Tuesday', start: '10:00', duration: 420, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
     { id: 'tue2', day: 'Tuesday', start: '17:00', duration: 60, title: 'Akşam Yemeği', type: 'meal', alarm: false },
     { id: 'tue3', day: 'Tuesday', start: '18:00', duration: 90, title: 'GENÇLİK MERKEZİ EĞİTİMİ', type: 'community', alarm: true },
-    { id: 'tue4', day: 'Tuesday', start: '19:30', duration: 360, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
+    { id: 'tue4', day: 'Tuesday', start: '19:30', duration: 270, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
 
     { id: 'wed1', day: 'Wednesday', start: '10:00', duration: 420, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
     { id: 'wed2', day: 'Wednesday', start: '17:00', duration: 60, title: 'Akşam Yemeği', type: 'meal', alarm: false },
     { id: 'wed3', day: 'Wednesday', start: '18:00', duration: 90, title: 'GENÇLİK MERKEZİ EĞİTİMİ', type: 'community', alarm: true },
-    { id: 'wed4', day: 'Wednesday', start: '19:30', duration: 360, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
+    { id: 'wed4', day: 'Wednesday', start: '19:30', duration: 270, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
 
     { id: 'thu1', day: 'Thursday', start: '10:00', duration: 120, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
     { id: 'thu2', day: 'Thursday', start: '12:00', duration: 180, title: 'ÜNİVERSİTE DERSLERİ', type: 'education', alarm: true },
     { id: 'thu3', day: 'Thursday', start: '15:00', duration: 120, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
     { id: 'thu4', day: 'Thursday', start: '17:00', duration: 60, title: 'Akşam Yemeği', type: 'meal', alarm: false },
     { id: 'thu5', day: 'Thursday', start: '18:00', duration: 90, title: 'GENÇLİK MERKEZİ EĞİTİMİ', type: 'community', alarm: true },
-    { id: 'thu6', day: 'Thursday', start: '19:30', duration: 360, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
+    { id: 'thu6', day: 'Thursday', start: '19:30', duration: 270, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
 
     { id: 'fri1', day: 'Friday', start: '10:00', duration: 150, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
     { id: 'fri2', day: 'Friday', start: '12:30', duration: 180, title: 'STAJ', type: 'work', alarm: true },
     { id: 'fri3', day: 'Friday', start: '15:30', duration: 360, title: 'AKRABA ZİYARETİ', type: 'special', alarm: false },
-    { id: 'fri4', day: 'Friday', start: '21:30', duration: 240, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
+    { id: 'fri4', day: 'Friday', start: '21:30', duration: 150, title: 'KODLAMA / BOŞ ZAMAN', type: 'coding', alarm: false },
 
-    { id: 'sat1', day: 'Saturday', start: '10:00', duration: 930, title: 'CODING / FREE TIME', type: 'coding', alarm: false },
+    { id: 'sat1', day: 'Saturday', start: '10:00', duration: 840, title: 'CODING / FREE TIME', type: 'coding', alarm: false },
 
     { id: 'sun1', day: 'Sunday', start: '10:00', duration: 420, title: 'TEMİZLİK & ÇAMAŞIR', type: 'chores', alarm: false },
     { id: 'sun2', day: 'Sunday', start: '17:00', duration: 60, title: 'Akşam Yemeği', type: 'meal', alarm: false },
-    { id: 'sun3', day: 'Sunday', start: '18:00', duration: 450, title: 'TEMİZLİK & ÇAMAŞIR', type: 'chores', alarm: false },
+    { id: 'sun3', day: 'Sunday', start: '18:00', duration: 360, title: 'TEMİZLİK & ÇAMAŞIR', type: 'chores', alarm: false },
 ];
 
 
@@ -340,7 +340,7 @@ const app = {
         const wb = XLSX.utils.book_new();
         const ws_data = [[tr.ui.time, ...tr.days]];
 
-        for (let i = 0; i < 48; i++) {
+        for (let i = 0; i < CONFIG.gridRows; i++) { 
             const hour = Math.floor(i / 2);
             const min = (i % 2) * 30;
             const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
@@ -635,6 +635,7 @@ const app = {
         const isMobile = this.isMobile();
         const daysToRender = isMobile ? [tr.days[this.activeMobileDayIndex]] : tr.days;
 
+        // --- TABLO BAŞLIKLARI VE ZAMAN SÜTUNU (Değişmedi) ---
         const tl = document.createElement('div');
         tl.className = 'sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 flex items-center justify-center font-bold text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider transition-colors duration-200';
         tl.textContent = tr.ui.time;
@@ -675,77 +676,130 @@ const app = {
             currentMin += 30;
         }
 
-// renderGrid fonksiyonunun içindeki this.events.forEach kısmını tamamen bununla değiştir:
-
+        // --- ETKİNLİKLERİ ÇİZME (GÜNCELLENMİŞ MANTIK) ---
         this.events.forEach(ev => {
-            // 1. Sütun (Column) Hesabı
-            let colStart = 0;
-            if (isMobile) {
-                if (ev.day !== DAYS_KEYS[this.activeMobileDayIndex]) return; 
-                colStart = 2; 
+            // Etkinliğin toplam bitiş dakikasını hesapla
+            const startMin = timeToMinutes(ev.start);
+            const totalEndMin = startMin + ev.duration;
+
+            // Parçaları tutacak dizi (Segmentler)
+            const segments = [];
+
+            if (totalEndMin > 1440) {
+                // DURUM: Gece yarısını geçiyor -> İKİYE BÖL
+                
+                // 1. Parça (Bugün): Başlangıçtan 24:00'e kadar
+                segments.push({
+                    day: ev.day,
+                    start: ev.start,
+                    duration: 1440 - startMin,
+                    isSplit: true, // Görsel ipucu için (opsiyonel)
+                    part: 'first'
+                });
+
+                // 2. Parça (Yarın): 00:00'dan kalana kadar
+                const dayIndex = DAYS_KEYS.indexOf(ev.day);
+                const nextDayIndex = (dayIndex + 1) % 7;
+                const nextDayName = DAYS_KEYS[nextDayIndex];
+
+                segments.push({
+                    day: nextDayName,
+                    start: '00:00',
+                    duration: totalEndMin - 1440,
+                    isSplit: true,
+                    part: 'second'
+                });
+
             } else {
-                colStart = DAYS_KEYS.indexOf(ev.day) + 2;
+                // DURUM: Normal Etkinlik
+                segments.push({
+                    day: ev.day,
+                    start: ev.start,
+                    duration: ev.duration,
+                    isSplit: false
+                });
             }
 
-            // 2. Matematiksel Konum Hesabı (Senin yapıştırdığın kısım)
-            const gridStartMin = timeToMinutes(CONFIG.gridStart);
-            let eventMin = timeToMinutes(ev.start);
-            if(eventMin < gridStartMin) eventMin += (24*60);
-            
-            const diff = eventMin - gridStartMin;
-            
-            // Hangi 30'luk dilime denk geliyor?
-            const slotIndex = Math.floor(diff / 30);
-            const rowStart = CONFIG.rowOffset + slotIndex;
-            
-            // Bu 30'luk dilimin içinde kaçıncı dakikada? (Hassas Konum)
-            const remainderMinutes = diff % 30; 
-            
-            // Piksel hesabı
-            const pxPerMin = isMobile ? (80/30) : (60/30);
-            const topOffset = remainderMinutes * pxPerMin; 
-            const exactHeight = ev.duration * pxPerMin;    
-
-            if(rowStart >= (CONFIG.gridRows + CONFIG.rowOffset)) return;
-
-            // 3. Elementi Oluşturma ve Stiller
-            const style = COLORS[ev.type] || COLORS.coding;
-            const el = document.createElement('div');
-            const paddingClass = isMobile ? 'p-1' : 'p-2';
-            
-            el.className = `event-card m-[2px] rounded-lg ${paddingClass} flex flex-col justify-center cursor-pointer relative overflow-hidden shadow-sm border ${style.class}`;
-            
-            el.style.gridColumn = `${colStart} / span 1`;
-            el.style.gridRow = `${rowStart} / span 1`; 
-            
-            // Piksel bazlı hassas ayarlar
-            el.style.marginTop = `${topOffset}px`; 
-            el.style.height = `${exactHeight}px`;  
-            el.style.zIndex = '10'; 
-
-            // 4. İÇERİK (innerHTML) - İşte burası eksikti!
-            const showDetails = exactHeight > 25; // Çok küçükse detayları gizle
-            const alarmIcon = ev.alarm ? `<i data-lucide="bell" class="w-3 h-3 absolute top-1 right-1 opacity-60"></i>` : '';
-            const titleClass = isMobile ? 'event-title font-bold' : 'font-bold leading-tight line-clamp-2 pr-2 text-xs';
-            const timeClass = isMobile ? 'event-time opacity-75 leading-tight' : 'mt-1 opacity-75 text-[10px] leading-tight';
-
-            el.innerHTML = `
-                <div class="resize-handle top" onmousedown="app.startResize(event, '${ev.id}', 'start')" ontouchstart="app.startResize(event, '${ev.id}', 'start')"></div>
-                ${alarmIcon}
-                <div class="${titleClass} pointer-events-none">${ev.title}</div>
-                ${showDetails ? `<div class="${timeClass} pointer-events-none">${ev.start} - ${minutesToTime(timeToMinutes(ev.start) + ev.duration)}</div>` : ''}
-                <div class="resize-handle bottom" onmousedown="app.startResize(event, '${ev.id}', 'end')" ontouchstart="app.startResize(event, '${ev.id}', 'end')"></div>
-            `;
-            
-            // 5. Tıklama Olayı (Modal açma)
-            el.onclick = (e) => { 
-                if(!e.target.classList.contains('resize-handle')) {
-                    this.openEditModal(ev); 
+            // Oluşturulan parçaları çiz
+            segments.forEach(seg => {
+                // MOBİL KONTROLÜ: Eğer mobildeysek ve bu parça aktif günde değilse çizme
+                if (isMobile) {
+                    if (seg.day !== DAYS_KEYS[this.activeMobileDayIndex]) return;
                 }
-            };
-            
-            // 6. Grid'e Ekleme - Bu satır olmazsa ekranda görünmez!
-            grid.appendChild(el);
+
+                // Sütun Hesabı
+                let colStart = 0;
+                if (isMobile) {
+                    colStart = 2; // Mobilde hep 2. sütun
+                } else {
+                    colStart = DAYS_KEYS.indexOf(seg.day) + 2;
+                }
+
+                // Konum Hesabı
+                const gridStartMin = timeToMinutes(CONFIG.gridStart);
+                let segmentStartMin = timeToMinutes(seg.start);
+                // Gece yarısı düzeltmesi (Eğer start 00:00 ise ve gridStart 00:00 ise sorun yok)
+                
+                const diff = segmentStartMin - gridStartMin;
+                const slotIndex = Math.floor(diff / 30);
+                const rowStart = CONFIG.rowOffset + slotIndex;
+                const remainderMinutes = diff % 30;
+
+                const pxPerMin = isMobile ? (80/30) : (60/30);
+                const topOffset = remainderMinutes * pxPerMin;
+                const exactHeight = seg.duration * pxPerMin;
+
+                if(rowStart >= (CONFIG.gridRows + CONFIG.rowOffset)) return;
+
+                // Element Oluşturma
+                const style = COLORS[ev.type] || COLORS.coding;
+                const el = document.createElement('div');
+                const paddingClass = isMobile ? 'p-1' : 'p-2';
+                
+                // Bölünmüş etkinlikler için hafif görsel fark (opsiyonel opaklık vb.)
+                const splitClass = seg.isSplit ? 'opacity-90' : '';
+
+                el.className = `event-card m-[2px] rounded-lg ${paddingClass} flex flex-col justify-center cursor-pointer relative overflow-hidden shadow-sm border ${style.class} ${splitClass}`;
+                
+                el.style.gridColumn = `${colStart} / span 1`;
+                el.style.gridRow = `${rowStart} / span 1`; 
+                el.style.marginTop = `${topOffset}px`; 
+                el.style.height = `${exactHeight}px`;  
+                el.style.zIndex = '10'; 
+
+                // İçerik
+                const showDetails = exactHeight > 25;
+                const alarmIcon = ev.alarm ? `<i data-lucide="bell" class="w-3 h-3 absolute top-1 right-1 opacity-60"></i>` : '';
+                const titleClass = isMobile ? 'event-title font-bold' : 'font-bold leading-tight line-clamp-2 pr-2 text-xs';
+                const timeClass = isMobile ? 'event-time opacity-75 leading-tight' : 'mt-1 opacity-75 text-[10px] leading-tight';
+
+                // Başlık yanına (Devamı...) gibi bir ibare koyabiliriz
+                let titleSuffix = '';
+                if (seg.part === 'first') titleSuffix = ' (Devamı Yarın)';
+                if (seg.part === 'second') titleSuffix = ' (Devam)';
+
+                // Saat Metni: Parça olsa bile orijinal saati mi gösterelim yoksa parçanın saatini mi?
+                // Genelde parçanın kendi saat aralığını göstermek daha az kafa karıştırır.
+                const segEndTime = minutesToTime(timeToMinutes(seg.start) + seg.duration);
+                const displayTime = `${seg.start} - ${segEndTime}`;
+
+                el.innerHTML = `
+                    <div class="resize-handle top" onmousedown="app.startResize(event, '${ev.id}', 'start')" ontouchstart="app.startResize(event, '${ev.id}', 'start')"></div>
+                    ${alarmIcon}
+                    <div class="${titleClass} pointer-events-none">${ev.title}${titleSuffix}</div>
+                    ${showDetails ? `<div class="${timeClass} pointer-events-none">${displayTime}</div>` : ''}
+                    <div class="resize-handle bottom" onmousedown="app.startResize(event, '${ev.id}', 'end')" ontouchstart="app.startResize(event, '${ev.id}', 'end')"></div>
+                `;
+                
+                // Tıklama Olayı (Orijinal 'ev' objesini gönderiyoruz)
+                el.onclick = (e) => { 
+                    if(!e.target.classList.contains('resize-handle')) {
+                        this.openEditModal(ev); 
+                    }
+                };
+                
+                grid.appendChild(el);
+            });
         });
     },
 
@@ -1127,8 +1181,6 @@ const app = {
         const tooltip = document.getElementById('dragTooltip');
         if(tooltip) tooltip.style.display = 'none';
 
-        // Stilleri renderGrid zaten temizleyip baştan yazacak ama
-        // görsel temizlik için z-index'i resetleyebiliriz.
         s.el.style.zIndex = '';
 
         if (s.newDuration === s.originalDuration && s.newStartMin === s.originalStartMin) {
@@ -1141,6 +1193,7 @@ const app = {
         if (evIndex > -1) {
             const oldEvent = app.events[evIndex];
             
+            // Başlangıç dakikasını hesapla (Gün döngüsü korumalı)
             let finalStart = s.newStartMin;
             while(finalStart >= 1440) finalStart -= 1440;
             while(finalStart < 0) finalStart += 1440;
@@ -1151,6 +1204,58 @@ const app = {
                 duration: s.newDuration 
             };
 
+            // --- YENİ EKLENEN KISIM: ERTESİ GÜN KONTROLÜ ---
+            // Eğer etkinlik gece yarısını (1440 dk) geçiyorsa
+            // Örn: Başlangıç 23:00 (1380 dk) + Süre 120 dk = Bitiş 1500 dk (Gece 01:00)
+            const absoluteEnd = s.newStartMin + s.newDuration;
+            
+            if (absoluteEnd > 1440) {
+                const overflowAmount = absoluteEnd - 1440; // Örn: 60 dk taşma
+                
+                // 1. Sonraki günü bul
+                const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                const currentDayIdx = days.indexOf(oldEvent.day);
+                const nextDay = days[(currentDayIdx + 1) % 7]; // Döngüsel (Pazar -> Pzt)
+
+                // 2. Sonraki günün sabahında, taşma süresi içinde kalan etkinliği bul (Genelde Uyku)
+                // Şart: 00:00 ile Taşma Süresi (örn 01:00) arasında başlayan bir şey var mı?
+                const nextDayEvIndex = app.events.findIndex(e => 
+                    e.day === nextDay && 
+                    timeToMinutes(e.start) < overflowAmount
+                );
+
+                if (nextDayEvIndex > -1) {
+                    const nextEv = app.events[nextDayEvIndex];
+                    const nextEvStart = timeToMinutes(nextEv.start);
+                    
+                    // Örn: Uyku 00:00'da başlıyor, biz 01:00'e kadar taştık.
+                    // Yeni Uyku Başlangıcı: 01:00
+                    // Yeni Uyku Süresi: Eski Süre - (Taşma - Eski Başlangıç)
+                    
+                    const shiftAmount = overflowAmount - nextEvStart;
+                    const newNextDuration = nextEv.duration - shiftAmount;
+
+                    if (newNextDuration > 0) {
+                        // Sonraki günün etkinliğini güncelle
+                        app.events[nextDayEvIndex] = {
+                            ...nextEv,
+                            start: minutesToTime(overflowAmount), // Yeni başlangıç saati
+                            duration: newNextDuration
+                        };
+                    } else {
+                        // Eğer taşma, uykuyu tamamen yutuyorsa, o etkinliği silmek isteyebilirsin
+                        // Şimdilik 15 dk'da bırakalım ki kaybolmasın
+                         app.events[nextDayEvIndex] = {
+                            ...nextEv,
+                            start: minutesToTime(overflowAmount),
+                            duration: 15
+                        };
+                    }
+                }
+            }
+            // ---------------------------------------------------
+
+            // Çakışma kontrolü (Kendi gününde başka şeye çarpıyor mu?)
             if (app.checkOverlap(updatedEvent)) {
                 alert(app.t('ui.overlapError'));
                 app.renderGrid(); 

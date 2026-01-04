@@ -127,19 +127,22 @@ body.resizing {
 /* scheduleplanner.css en altına ekle */
 
 .drag-tooltip {
-    position: fixed; /* Sayfada sabit dursun, scroldan etkilenmesin */
-    background-color: rgba(15, 23, 42, 0.95); /* Koyu arka plan */
+    position: fixed;
+    background-color: rgba(15, 23, 42, 0.95);
     color: #ffffff;
     padding: 8px 12px;
     border-radius: 8px;
     font-size: 13px;
     font-weight: 600;
-    z-index: 9999; /* Her şeyin üstünde */
-    pointer-events: none; /* Tıklamaları engellemesin */
-    display: none; /* Başlangıçta gizli */
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
     white-space: nowrap;
     backdrop-filter: blur(2px);
-    transform: translate(15px, 15px); /* İmlecin biraz sağ altına */
+    
+    /* İŞTE BURAYI DEĞİŞTİRİYORUZ: */
+    /* X ekseninde 20px sağa, Y ekseninde -45px yukarı */
+    transform: translate(20px, -45px); 
 }
