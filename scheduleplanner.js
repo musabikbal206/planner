@@ -801,6 +801,8 @@ const app = {
                 grid.appendChild(el);
             });
         });
+        
+        lucide.createIcons();
     },
 
     // --- YENİ EKLENEN FONKSİYON: ÇAKIŞMA KONTROLÜ ---
@@ -1267,5 +1269,6 @@ const app = {
         s.isDragging = false;
     },
 };
+
 
 window.onload = () => app.init();
