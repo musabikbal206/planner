@@ -1,0 +1,145 @@
+body {
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+/* Grid Setup */
+.schedule-grid {
+    display: grid;
+    /* Mobile Default */
+    grid-template-columns: 50px 1fr;
+    grid-template-rows: 50px repeat(48, 80px); 
+}
+
+@media (min-width: 768px) {
+    .schedule-grid {
+        /* Desktop */
+        grid-template-columns: 80px repeat(7, minmax(130px, 1fr));
+        grid-template-rows: 50px repeat(48, 60px);
+    }
+}
+
+/* Event Card Styles for Mobile */
+@media (max-width: 768px) {
+    .event-card .event-title {
+        font-size: 0.875rem; 
+        line-height: 1.25rem;
+        white-space: normal; 
+        overflow: visible;
+        text-overflow: clip;
+        display: block; 
+    }
+    .event-card .event-time {
+        font-size: 0.75rem; 
+        margin-top: 0.25rem;
+    }
+}
+
+.event-card { transition: transform 0.1s, box-shadow 0.1s; }
+.event-card:active { transform: scale(0.97); }
+
+.modal-overlay {
+    opacity: 0; visibility: hidden; transition: all 0.3s ease; z-index: 50;
+}
+.modal-overlay.active { opacity: 1; visibility: visible; }
+.modal-content { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+@media (max-width: 768px) {
+    .modal-content {
+        transform: translateY(100%);
+        border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+        max-height: 90vh;
+    }
+    .modal-overlay.active .modal-content { transform: translateY(0); }
+}
+
+@media (min-width: 768px) {
+    .modal-content { transform: scale(0.95); opacity: 0; }
+    .modal-overlay.active .modal-content { transform: scale(1); opacity: 1; }
+}
+/* scheduleplanner.css dosyasının en altına ekle */
+
+/* scheduleplanner.css dosyasının en altına ekle/değiştir */
+
+.event-card {
+    position: relative; 
+}
+
+/* Genel Tutamaç Stili */
+.resize-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 10px; /* Tutma alanı */
+    cursor: ns-resize;
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Üst Tutamaç */
+.resize-handle.top {
+    top: 0;
+    align-items: flex-start;
+}
+
+/* Alt Tutamaç */
+.resize-handle.bottom {
+    bottom: 0;
+    align-items: flex-end;
+}
+
+/* Görsel Çizgi */
+.resize-handle::after {
+    content: '';
+    width: 20px;
+    height: 3px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+    transition: background-color 0.2s;
+}
+
+.dark .resize-handle::after {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.resize-handle:hover::after {
+    background-color: rgba(0, 0, 0, 0.5);
+    height: 4px; /* Hoverda kalınlaşsın */
+}
+
+.dark .resize-handle:hover::after {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+body.resizing {
+    cursor: ns-resize;
+    user-select: none;
+}
+
+/* scheduleplanner.css en altına ekle */
+
+.drag-tooltip {
+    position: fixed; /* Sayfada sabit dursun, scroldan etkilenmesin */
+    background-color: rgba(15, 23, 42, 0.95); /* Koyu arka plan */
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 9999; /* Her şeyin üstünde */
+    pointer-events: none; /* Tıklamaları engellemesin */
+    display: none; /* Başlangıçta gizli */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+    backdrop-filter: blur(2px);
+    transform: translate(15px, 15px); /* İmlecin biraz sağ altına */
+}
