@@ -157,6 +157,16 @@ const app = {
         rowHeight: 0,
         newDuration: 0
     },
+    moveState: {
+        isMoving: false,
+        eventId: null,
+        startX: 0,
+        startY: 0,
+        ghostEl: null,
+        originalEl: null,
+        offsetX: 0,
+        offsetY: 0
+    },
 
     init() {
         try {
@@ -760,6 +770,7 @@ const app = {
                 const splitClass = seg.isSplit ? 'opacity-90' : '';
 
                 el.className = `event-card m-[2px] rounded-lg ${paddingClass} flex flex-col justify-center cursor-pointer relative overflow-hidden shadow-sm border ${style.class} ${splitClass}`;
+                el.dataset.id = ev.id;
                 
                 el.style.gridColumn = `${colStart} / span 1`;
                 el.style.gridRow = `${rowStart} / span 1`; 
@@ -790,6 +801,16 @@ const app = {
                     ${showDetails ? `<div class="${timeClass} pointer-events-none">${displayTime}</div>` : ''}
                     <div class="resize-handle bottom" onmousedown="app.startResize(event, '${ev.id}', 'end')" ontouchstart="app.startResize(event, '${ev.id}', 'end')"></div>
                 `;
+                el.addEventListener('mousedown', (e) => {
+                    // Eğer tıklanan yer resize-handle ise taşıma başlatma!
+                    if(e.target.classList.contains('resize-handle')) return;
+                    app.startMove(e, ev.id);
+                });
+                
+                el.addEventListener('touchstart', (e) => {
+                    if(e.target.classList.contains('resize-handle')) return;
+                    app.startMove(e, ev.id);
+                }, { passive: false });                
                 
                 // Tıklama Olayı (Orijinal 'ev' objesini gönderiyoruz)
                 el.onclick = (e) => { 
@@ -1265,6 +1286,165 @@ const app = {
             }
         }
         s.isDragging = false;
+    },
+    // ... app objesi içinde ...
+
+    // 1. TAŞIMAYI BAŞLAT
+    // 1. TAŞIMAYI BAŞLAT
+    startMove(e, eventId) {
+        if (this.dragState.isDragging) return;
+
+        e.preventDefault(); 
+        
+        const ev = this.events.find(x => x.id === eventId);
+        if (!ev) return;
+
+        const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+        
+        const originalEl = e.target.closest('.event-card');
+        const rect = originalEl.getBoundingClientRect();
+
+        const offsetX = clientX - rect.left;
+        const offsetY = clientY - rect.top;
+
+        // Hayalet Element Oluştur
+        const ghostEl = originalEl.cloneNode(true);
+        ghostEl.classList.add('dragging-ghost');
+        
+        // --- DÜZELTME BAŞLANGICI ---
+        // Margin ve Grid ayarlarını sıfırla ki kayma yapmasın
+        ghostEl.style.margin = '0'; 
+        ghostEl.style.marginTop = '0'; 
+        ghostEl.style.gridColumn = '';
+        ghostEl.style.gridRow = '';
+        // --- DÜZELTME BİTİŞİ ---
+
+        ghostEl.style.width = `${rect.width}px`;
+        ghostEl.style.height = `${rect.height}px`;
+        ghostEl.style.left = `${rect.left}px`;
+        ghostEl.style.top = `${rect.top}px`;
+        
+        document.body.appendChild(ghostEl);
+        originalEl.classList.add('is-being-dragged');
+        document.body.classList.add('dragging-active');
+
+        this.moveState = {
+            isMoving: true,
+            eventId: eventId,
+            ghostEl: ghostEl,
+            originalEl: originalEl,
+            offsetX: offsetX,
+            offsetY: offsetY
+        };
+
+        window.addEventListener('mousemove', this.handleMove);
+        window.addEventListener('mouseup', this.stopMove);
+        window.addEventListener('touchmove', this.handleMove, { passive: false });
+        window.addEventListener('touchend', this.stopMove);
+    },
+
+    // 2. TAŞIMA SIRASINDA (Hayaleti Hareket Ettir)
+    handleMove: (e) => {
+        if (!app.moveState.isMoving) return;
+        e.preventDefault();
+
+        const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+
+        const s = app.moveState;
+        
+        // Hayaleti yeni konuma taşı
+        s.ghostEl.style.left = `${clientX - s.offsetX}px`;
+        s.ghostEl.style.top = `${clientY - s.offsetY}px`;
+    },
+
+    // 3. TAŞIMA BİTTİ (Yeni Konumu Hesapla ve Kaydet)
+    stopMove: (e) => {
+        const s = app.moveState;
+        if (!s.isMoving) return;
+
+        // Temizlik
+        window.removeEventListener('mousemove', app.handleMove);
+        window.removeEventListener('mouseup', app.stopMove);
+        window.removeEventListener('touchmove', app.handleMove);
+        window.removeEventListener('touchend', app.stopMove);
+        
+        document.body.classList.remove('dragging-active');
+        s.originalEl.classList.remove('is-being-dragged');
+        
+        // Hayalet elementi geçici olarak gizle ki altındaki elemanı görebilelim
+        if (s.ghostEl) s.ghostEl.style.display = 'none';
+
+        // Bırakılan noktadaki koordinatları al
+        let clientX, clientY;
+        if (e.type.includes('mouse')) {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        } else {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        }
+
+        // Koordinattaki en üst elementi bul
+        const elementBelow = document.elementFromPoint(clientX, clientY);
+        
+        // Hayaleti tamamen sil
+        if (s.ghostEl) s.ghostEl.remove();
+
+        // Eğer boşluğa veya geçersiz bir yere bıraktıysa çık
+        if (!elementBelow) {
+            s.isMoving = false;
+            return;
+        }
+
+        // Bıraktığımız yer bir Etkinlik Kartı mı?
+        const targetCard = elementBelow.closest('.event-card');
+
+        // Eğer bir kartın üzerine bıraktıysak ve bu kart kendisi değilse
+        if (targetCard && targetCard.dataset.id && targetCard.dataset.id !== s.eventId) {
+            
+            const sourceId = s.eventId;
+            const targetId = targetCard.dataset.id;
+
+            // Verileri bul
+            const sourceIndex = app.events.findIndex(x => x.id === sourceId);
+            const targetIndex = app.events.findIndex(x => x.id === targetId);
+
+            if (sourceIndex > -1 && targetIndex > -1) {
+                const sourceEv = app.events[sourceIndex];
+                const targetEv = app.events[targetIndex];
+
+                // --- TAKAS İŞLEMİ (SWAP) ---
+                // Saatler ve Günler (start, duration, day) SABİT KALIYOR.
+                // Sadece içerik (title, type, alarm) yer değiştiriyor.
+
+                const newSourceEv = {
+                    ...sourceEv, // Source'un zamanı/günü korunur
+                    title: targetEv.title,
+                    type: targetEv.type,
+                    alarm: targetEv.alarm
+                };
+
+                const newTargetEv = {
+                    ...targetEv, // Target'ın zamanı/günü korunur
+                    title: sourceEv.title,
+                    type: sourceEv.type,
+                    alarm: sourceEv.alarm
+                };
+
+                // Güncelle
+                app.events[sourceIndex] = newSourceEv;
+                app.events[targetIndex] = newTargetEv;
+                
+                app.save(); // Kaydet ve Çiz
+            }
+        } 
+        
+        // Eğer boşluğa bıraktıysak (targetCard yoksa), hiçbir şey yapmıyoruz.
+        // Çünkü "zamana dokunma" dedin. Boşluğa bırakmak zaman değişimi demektir.
+        
+        s.isMoving = false;
     },
 };
 
