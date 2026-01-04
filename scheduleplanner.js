@@ -1270,5 +1270,4 @@ const app = {
     },
 };
 
-
 window.onload = () => app.init();
