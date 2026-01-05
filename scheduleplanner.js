@@ -144,6 +144,11 @@ const minutesToTime = (min) => {
 };
 
 const app = {
+    viewSettings: {
+        startHour: '00:00',
+        endHour: '24:00',
+        visibleDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    },
     events: [],
     activeMobileDayIndex: 0, 
     isDark: false,
@@ -166,6 +171,11 @@ const app = {
             this.events = JSON.parse(JSON.stringify(INITIAL_EVENTS));
         }
 
+        try {
+            const savedView = localStorage.getItem('weeklyScheduleView');
+            if(savedView) this.viewSettings = JSON.parse(savedView);
+        } catch(e) {}
+
         const savedTheme = localStorage.getItem('weeklyScheduleTheme');
         if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             this.setDarkMode(true);
@@ -176,6 +186,7 @@ const app = {
         const savedLang = localStorage.getItem('weeklyScheduleLang');
         if (savedLang) this.lang = savedLang;
 
+        this.initSettingsUI();
         this.updateUITexts();
         this.renderGrid();
         this.initModalListeners();
@@ -205,6 +216,40 @@ const app = {
         for(let p of parts) res = res?.[p];
         return res || key;
     },
+    // YENİ FONKSİYONLAR
+    initSettingsUI() {
+        const startSelect = document.getElementById('gridStartSelect');
+        const endSelect = document.getElementById('gridEndSelect');
+        startSelect.innerHTML = '';
+        endSelect.innerHTML = '';
+
+        for(let i=0; i<=24; i++) {
+            const t = `${i.toString().padStart(2, '0')}:00`;
+            const optS = document.createElement('option');
+            optS.value = t; optS.text = t;
+            startSelect.appendChild(optS);
+
+            const optE = document.createElement('option');
+            optE.value = t; optE.text = t;
+            if(i !== 0) endSelect.appendChild(optE);
+        }
+        
+        // Kayıtlı değerleri seç
+        startSelect.value = this.viewSettings.startHour;
+        endSelect.value = this.viewSettings.endHour;
+    },
+
+    updateViewSettings() {
+        this.viewSettings.startHour = document.getElementById('gridStartSelect').value;
+        this.viewSettings.endHour = document.getElementById('gridEndSelect').value;
+
+        const checkedDays = [];
+        document.querySelectorAll('.day-toggle:checked').forEach(cb => checkedDays.push(cb.value));
+        this.viewSettings.visibleDays = checkedDays;
+
+        localStorage.setItem('weeklyScheduleView', JSON.stringify(this.viewSettings));
+        this.renderGrid();
+    },
 
     toggleLanguage() {
         this.lang = this.lang === 'en' ? 'tr' : 'en';
@@ -216,6 +261,19 @@ const app = {
 
     updateUITexts() {
         const tr = TRANSLATIONS[this.lang];
+        const dayToggles = document.getElementById('dayToggles');
+        dayToggles.innerHTML = '';
+        DAYS_KEYS.forEach((key, idx) => {
+            const isChecked = this.viewSettings.visibleDays.includes(key) ? 'checked' : '';
+            const lbl = document.createElement('label');
+            lbl.className = 'flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700';
+            lbl.innerHTML = `
+                <input type="checkbox" value="${key}" class="day-toggle w-4 h-4 rounded text-blue-600 focus:ring-blue-500" ${isChecked} onchange="app.updateViewSettings()">
+                <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">${tr.shortDays[idx]}</span>
+            `;
+            dayToggles.appendChild(lbl);
+        });
+
         document.getElementById('appTitle').textContent = tr.title;
         document.getElementById('langBtn').textContent = this.lang.toUpperCase();
         document.getElementById('currentLangDisplay').textContent = this.lang.toUpperCase();
@@ -240,6 +298,7 @@ const app = {
         document.getElementById('btnImport').textContent = tr.ui.import;
         document.getElementById('btnReset').textContent = tr.ui.reset;
         document.getElementById('btnClear').textContent = tr.ui.clear;
+        
 
         const daySelect = document.getElementById('inputDay');
         const currentVal = daySelect.value;
@@ -633,175 +692,125 @@ const app = {
         grid.innerHTML = '';
         const tr = TRANSLATIONS[this.lang];
         const isMobile = this.isMobile();
-        const daysToRender = isMobile ? [tr.days[this.activeMobileDayIndex]] : tr.days;
+        
+        // Görünür günleri ve saatleri ayarla
+        let visibleDayKeys = this.viewSettings.visibleDays;
+        if(visibleDayKeys.length === 0) visibleDayKeys = DAYS_KEYS;
 
-        // --- TABLO BAŞLIKLARI VE ZAMAN SÜTUNU (Değişmedi) ---
+        const activeDayKeyMobile = DAYS_KEYS[this.activeMobileDayIndex];
+        const daysToRender = isMobile ? [activeDayKeyMobile] : visibleDayKeys;
+
+        const startMin = timeToMinutes(this.viewSettings.startHour);
+        let endMin = timeToMinutes(this.viewSettings.endHour);
+        if (endMin <= startMin) endMin = startMin + (24*60);
+        
+        const totalDuration = endMin - startMin;
+        const totalSlots = Math.ceil(totalDuration / 30);
+
+        // Grid Style Ayarla
+        const colCount = isMobile ? 2 : (daysToRender.length + 1);
+        
+        if (isMobile) {
+            grid.style.gridTemplateColumns = '50px 1fr';
+        } else {
+            grid.style.gridTemplateColumns = `80px repeat(${daysToRender.length}, minmax(130px, 1fr))`;
+        }
+        grid.style.gridTemplateRows = `50px repeat(${totalSlots}, ${isMobile ? '80px' : '60px'})`;
+
+        // Başlık (Zaman)
         const tl = document.createElement('div');
         tl.className = 'sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 flex items-center justify-center font-bold text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider transition-colors duration-200';
         tl.textContent = tr.ui.time;
-        tl.style.gridRow = '1'; 
-        tl.style.gridColumn = '1';
+        tl.style.gridRow = '1'; tl.style.gridColumn = '1';
         grid.appendChild(tl);
 
-        daysToRender.forEach((day, index) => {
+        // Başlık (Günler)
+        daysToRender.forEach((dayKey, index) => {
+            const dayIdx = DAYS_KEYS.indexOf(dayKey);
             const d = document.createElement('div');
             d.className = 'sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center font-bold text-gray-700 dark:text-gray-300 text-sm shadow-sm transition-colors duration-200';
-            d.innerHTML = `<span>${day.substring(0, 3)}</span>`;
+            d.innerHTML = `<span>${tr.days[dayIdx].substring(0, 3)}</span>`;
             d.style.gridRow = '1';
             d.style.gridColumn = `${index + 2}`;
             grid.appendChild(d);
         });
 
-        let currentMin = timeToMinutes(CONFIG.gridStart);
-        for(let i = 0; i < CONFIG.gridRows; i++) {
+        // Satırlar ve Hücreler
+        let currentMin = startMin;
+        for(let i = 0; i < totalSlots; i++) {
             const timeStr = minutesToTime(currentMin);
             const row = CONFIG.rowOffset + i;
+            
             const timeLabel = document.createElement('div');
             timeLabel.className = 'border-r border-b border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center bg-white dark:bg-gray-900 sticky left-0 z-10 transition-colors duration-200';
-            timeLabel.style.gridRow = `${row}`;
-            timeLabel.style.gridColumn = '1';
+            timeLabel.style.gridRow = `${row}`; timeLabel.style.gridColumn = '1';
             const isHour = timeStr.endsWith('00');
-            const textClass = isHour ? 'text-gray-800 dark:text-gray-200 font-bold' : 'text-gray-400 dark:text-gray-600 font-medium';
-            timeLabel.innerHTML = `<span class="text-xs ${textClass}">${timeStr}</span>`;
+            timeLabel.innerHTML = `<span class="text-xs ${isHour ? 'text-gray-800 dark:text-gray-200 font-bold' : 'text-gray-400 dark:text-gray-600 font-medium'}">${timeStr}</span>`;
             grid.appendChild(timeLabel);
 
-            const numCols = isMobile ? 1 : 7;
-            for(let d = 0; d < numCols; d++) {
+            const cellCols = isMobile ? 1 : daysToRender.length;
+            for(let c = 0; c < cellCols; c++) {
                 const cell = document.createElement('div');
                 cell.className = 'border-r border-b border-gray-100 dark:border-gray-800 transition-colors duration-200';
-                cell.style.gridRow = `${row}`;
-                cell.style.gridColumn = `${d + 2}`;
+                cell.style.gridRow = `${row}`; cell.style.gridColumn = `${c + 2}`;
                 grid.appendChild(cell);
             }
             currentMin += 30;
         }
 
-        // --- ETKİNLİKLERİ ÇİZME (GÜNCELLENMİŞ MANTIK) ---
+        // Etkinlikleri Çiz
         this.events.forEach(ev => {
-            // Etkinliğin toplam bitiş dakikasını hesapla
-            const startMin = timeToMinutes(ev.start);
-            const totalEndMin = startMin + ev.duration;
+            if (!isMobile && !daysToRender.includes(ev.day)) return;
+            if (isMobile && ev.day !== activeDayKeyMobile) return;
 
-            // Parçaları tutacak dizi (Segmentler)
-            const segments = [];
+            const evStartMin = timeToMinutes(ev.start);
+            const evEndMin = evStartMin + ev.duration;
 
-            if (totalEndMin > 1440) {
-                // DURUM: Gece yarısını geçiyor -> İKİYE BÖL
-                
-                // 1. Parça (Bugün): Başlangıçtan 24:00'e kadar
-                segments.push({
-                    day: ev.day,
-                    start: ev.start,
-                    duration: 1440 - startMin,
-                    isSplit: true, // Görsel ipucu için (opsiyonel)
-                    part: 'first'
-                });
+            // Görünüm dışındaysa atla
+            if (evStartMin >= endMin || evEndMin <= startMin) return;
 
-                // 2. Parça (Yarın): 00:00'dan kalana kadar
-                const dayIndex = DAYS_KEYS.indexOf(ev.day);
-                const nextDayIndex = (dayIndex + 1) % 7;
-                const nextDayName = DAYS_KEYS[nextDayIndex];
+            // Kırpma hesabı
+            let displayStartMin = Math.max(evStartMin, startMin);
+            let displayEndMin = Math.min(evEndMin, endMin);
+            let displayDuration = displayEndMin - displayStartMin;
+            if (displayDuration <= 0) return;
 
-                segments.push({
-                    day: nextDayName,
-                    start: '00:00',
-                    duration: totalEndMin - 1440,
-                    isSplit: true,
-                    part: 'second'
-                });
+            const diff = displayStartMin - startMin;
+            const slotIndex = Math.floor(diff / 30);
+            const rowStart = CONFIG.rowOffset + slotIndex;
+            const remainderMinutes = diff % 30;
+            const pxPerMin = isMobile ? (80/30) : (60/30);
+            const topOffset = remainderMinutes * pxPerMin;
+            const exactHeight = displayDuration * pxPerMin;
 
-            } else {
-                // DURUM: Normal Etkinlik
-                segments.push({
-                    day: ev.day,
-                    start: ev.start,
-                    duration: ev.duration,
-                    isSplit: false
-                });
-            }
+            let colStart = 2;
+            if (!isMobile) colStart = daysToRender.indexOf(ev.day) + 2;
 
-            // Oluşturulan parçaları çiz
-            segments.forEach(seg => {
-                // MOBİL KONTROLÜ: Eğer mobildeysek ve bu parça aktif günde değilse çizme
-                if (isMobile) {
-                    if (seg.day !== DAYS_KEYS[this.activeMobileDayIndex]) return;
-                }
+            const style = COLORS[ev.type] || COLORS.coding;
+            const el = document.createElement('div');
+            const paddingClass = isMobile ? 'p-1' : 'p-2';
+            el.className = `event-card m-[2px] rounded-lg ${paddingClass} flex flex-col justify-center cursor-pointer relative overflow-hidden shadow-sm border ${style.class}`;
+            el.style.gridColumn = `${colStart} / span 1`;
+            el.style.gridRow = `${rowStart} / span 1`; 
+            el.style.marginTop = `${topOffset}px`; 
+            el.style.height = `${exactHeight}px`;  
+            el.style.zIndex = '10'; 
 
-                // Sütun Hesabı
-                let colStart = 0;
-                if (isMobile) {
-                    colStart = 2; // Mobilde hep 2. sütun
-                } else {
-                    colStart = DAYS_KEYS.indexOf(seg.day) + 2;
-                }
-
-                // Konum Hesabı
-                const gridStartMin = timeToMinutes(CONFIG.gridStart);
-                let segmentStartMin = timeToMinutes(seg.start);
-                // Gece yarısı düzeltmesi (Eğer start 00:00 ise ve gridStart 00:00 ise sorun yok)
-                
-                const diff = segmentStartMin - gridStartMin;
-                const slotIndex = Math.floor(diff / 30);
-                const rowStart = CONFIG.rowOffset + slotIndex;
-                const remainderMinutes = diff % 30;
-
-                const pxPerMin = isMobile ? (80/30) : (60/30);
-                const topOffset = remainderMinutes * pxPerMin;
-                const exactHeight = seg.duration * pxPerMin;
-
-                if(rowStart >= (CONFIG.gridRows + CONFIG.rowOffset)) return;
-
-                // Element Oluşturma
-                const style = COLORS[ev.type] || COLORS.coding;
-                const el = document.createElement('div');
-                const paddingClass = isMobile ? 'p-1' : 'p-2';
-                
-                // Bölünmüş etkinlikler için hafif görsel fark (opsiyonel opaklık vb.)
-                const splitClass = seg.isSplit ? 'opacity-90' : '';
-
-                el.className = `event-card m-[2px] rounded-lg ${paddingClass} flex flex-col justify-center cursor-pointer relative overflow-hidden shadow-sm border ${style.class} ${splitClass}`;
-                
-                el.style.gridColumn = `${colStart} / span 1`;
-                el.style.gridRow = `${rowStart} / span 1`; 
-                el.style.marginTop = `${topOffset}px`; 
-                el.style.height = `${exactHeight}px`;  
-                el.style.zIndex = '10'; 
-
-                // İçerik
-                const showDetails = exactHeight > 25;
-                const alarmIcon = ev.alarm ? `<i data-lucide="bell" class="w-3 h-3 absolute top-1 right-1 opacity-60"></i>` : '';
-                const titleClass = isMobile ? 'event-title font-bold' : 'font-bold leading-tight line-clamp-2 pr-2 text-xs';
-                const timeClass = isMobile ? 'event-time opacity-75 leading-tight' : 'mt-1 opacity-75 text-[10px] leading-tight';
-
-                // Başlık yanına (Devamı...) gibi bir ibare koyabiliriz
-                let titleSuffix = '';
-                if (seg.part === 'first') titleSuffix = ' (Devamı Yarın)';
-                if (seg.part === 'second') titleSuffix = ' (Devam)';
-
-                // Saat Metni: Parça olsa bile orijinal saati mi gösterelim yoksa parçanın saatini mi?
-                // Genelde parçanın kendi saat aralığını göstermek daha az kafa karıştırır.
-                const segEndTime = minutesToTime(timeToMinutes(seg.start) + seg.duration);
-                const displayTime = `${seg.start} - ${segEndTime}`;
-
-                el.innerHTML = `
-                    <div class="resize-handle top" onmousedown="app.startResize(event, '${ev.id}', 'start')" ontouchstart="app.startResize(event, '${ev.id}', 'start')"></div>
-                    ${alarmIcon}
-                    <div class="${titleClass} pointer-events-none">${ev.title}${titleSuffix}</div>
-                    ${showDetails ? `<div class="${timeClass} pointer-events-none">${displayTime}</div>` : ''}
-                    <div class="resize-handle bottom" onmousedown="app.startResize(event, '${ev.id}', 'end')" ontouchstart="app.startResize(event, '${ev.id}', 'end')"></div>
-                `;
-                
-                // Tıklama Olayı (Orijinal 'ev' objesini gönderiyoruz)
-                el.onclick = (e) => { 
-                    if(!e.target.classList.contains('resize-handle')) {
-                        this.openEditModal(ev); 
-                    }
-                };
-                
-                grid.appendChild(el);
-            });
+            const showDetails = exactHeight > 25;
+            const alarmIcon = ev.alarm ? `<i data-lucide="bell" class="w-3 h-3 absolute top-1 right-1 opacity-60"></i>` : '';
+            const origEnd = minutesToTime(evStartMin + ev.duration);
+            
+            el.innerHTML = `
+                <div class="resize-handle top" onmousedown="app.startResize(event, '${ev.id}', 'start')" ontouchstart="app.startResize(event, '${ev.id}', 'start')"></div>
+                ${alarmIcon}
+                <div class="${isMobile ? 'event-title font-bold' : 'font-bold leading-tight line-clamp-2 pr-2 text-xs'} pointer-events-none">${ev.title}</div>
+                ${showDetails ? `<div class="${isMobile ? 'event-time opacity-75' : 'mt-1 opacity-75 text-[10px]'} pointer-events-none">${ev.start} - ${origEnd}</div>` : ''}
+                <div class="resize-handle bottom" onmousedown="app.startResize(event, '${ev.id}', 'end')" ontouchstart="app.startResize(event, '${ev.id}', 'end')"></div>
+            `;
+            
+            el.onclick = (e) => { if(!e.target.classList.contains('resize-handle')) this.openEditModal(ev); };
+            grid.appendChild(el);
         });
-        
         lucide.createIcons();
     },
 
