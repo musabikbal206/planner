@@ -140,3 +140,49 @@ body.resizing {
     /* X ekseninde 20px sağa, Y ekseninde -45px yukarı */
     transform: translate(20px, -45px); 
 }
+
+/* scheduleplanner.css - EN ALTA EKLE */
+
+.color-input-wrapper {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.dark .color-input-wrapper {
+    border-color: #4b5563;
+}
+
+input[type="color"].custom-color-input {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1.5);
+    width: 150%;
+    height: 150%;
+    padding: 0;
+    margin: 0;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+}
+
+.category-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+}
+
+.dark .category-item {
+    background-color: #1e293b;
+    border-color: #334155;
+}

@@ -11,11 +11,6 @@ const TRANSLATIONS = {
         title: 'Linguamis Planner',
         days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
         shortDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        categories: {
-            sleep: 'Sleep',
-            education: 'Education', work: 'Work', community: 'Social', meal: 'Meal',
-            special: 'Special', chores: 'Chores', coding: 'Coding'
-        },
         ui: {
             time: 'Time',
             editTitle: 'Edit Activity', newTitle: 'New Activity',
@@ -40,11 +35,6 @@ const TRANSLATIONS = {
         title: 'Linguamis Planlayıcı',
         days: ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'],
         shortDays: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'],
-        categories: {
-            sleep: 'Uyku',
-            education: 'Eğitim', work: 'İş/Staj', community: 'Sosyal', meal: 'Yemek',
-            special: 'Özel', chores: 'Ev İşleri', coding: 'Yazılım'
-        },
         ui: {
             time: 'Saat',
             editTitle: 'Etkinliği Düzenle', newTitle: 'Yeni Etkinlik',
@@ -67,15 +57,47 @@ const TRANSLATIONS = {
     }
 };
 
-const COLORS = {
-    sleep: { labelKey: 'sleep', class: 'bg-indigo-100 dark:bg-indigo-900/40 border-l-4 border-indigo-500 text-indigo-900 dark:text-indigo-100' },
-    education: { labelKey: 'education', class: 'bg-blue-100 dark:bg-blue-900/40 border-l-4 border-blue-500 text-blue-900 dark:text-blue-100' },
-    work: { labelKey: 'work', class: 'bg-green-100 dark:bg-green-900/40 border-l-4 border-green-500 text-green-900 dark:text-green-100' },
-    community: { labelKey: 'community', class: 'bg-purple-100 dark:bg-purple-900/40 border-l-4 border-purple-500 text-purple-900 dark:text-purple-100' },
-    meal: { labelKey: 'meal', class: 'bg-orange-100 dark:bg-orange-900/40 border-l-4 border-orange-500 text-orange-900 dark:text-orange-100' },
-    special: { labelKey: 'special', class: 'bg-pink-100 dark:bg-pink-900/40 border-l-4 border-pink-500 text-pink-900 dark:text-pink-100' },
-    chores: { labelKey: 'chores', class: 'bg-gray-200 dark:bg-gray-700 border-l-4 border-gray-500 dark:border-gray-400 text-gray-800 dark:text-gray-200' },
-    coding: { labelKey: 'coding', class: 'bg-white dark:bg-gray-800/50 border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-400' },
+// Varsayılan Kategoriler
+const DEFAULT_CATEGORIES = [
+    { id: 'sleep', name: 'Uyku / Sleep', color: '#6366f1' },
+    { id: 'education', name: 'Eğitim / Edu', color: '#3b82f6' },
+    { id: 'work', name: 'İş / Work', color: '#22c55e' },
+    { id: 'community', name: 'Sosyal / Social', color: '#a855f7' },
+    { id: 'meal', name: 'Yemek / Meal', color: '#f97316' },
+    { id: 'special', name: 'Özel / Special', color: '#ec4899' },
+    { id: 'chores', name: 'Ev İşleri / Chores', color: '#64748b' },
+    { id: 'coding', name: 'Yazılım / Coding', color: '#0ea5e9' }
+];
+
+// YARDIMCI RENK FONKSİYONLARI (GLOBAL)
+const hexToRgba = (hex, alpha) => {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+        r = parseInt("0x" + hex[1] + hex[1]);
+        g = parseInt("0x" + hex[2] + hex[2]);
+        b = parseInt("0x" + hex[3] + hex[3]);
+    } else if (hex.length === 7) {
+        r = parseInt("0x" + hex[1] + hex[2]);
+        g = parseInt("0x" + hex[3] + hex[4]);
+        b = parseInt("0x" + hex[5] + hex[6]);
+    }
+    return `rgba(${r},${g},${b},${alpha})`;
+};
+
+const adjustBrightness = (col, amt) => {
+    let usePound = false;
+    if (col[0] == "#") {
+        col = col.slice(1);
+        usePound = true;
+    }
+    let num = parseInt(col, 16);
+    let r = (num >> 16) + amt;
+    if (r > 255) r = 255; else if (r < 0) r = 0;
+    let b = ((num >> 8) & 0x00FF) + amt;
+    if (b > 255) b = 255; else if (b < 0) b = 0;
+    let g = (num & 0x0000FF) + amt;
+    if (g > 255) g = 255; else if (g < 0) g = 0;
+    return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6,'0');
 };
 
 const INITIAL_EVENTS = [
@@ -131,7 +153,6 @@ const INITIAL_EVENTS = [
     { id: 'sun3', day: 'Sunday', start: '18:00', duration: 360, title: 'TEMİZLİK & ÇAMAŞIR', type: 'chores', alarm: false },
 ];
 
-
 const timeToMinutes = (t) => {
     const [h, m] = t.split(':').map(Number);
     return h * 60 + m;
@@ -162,6 +183,7 @@ const app = {
         rowHeight: 0,
         newDuration: 0
     },
+    categories: [],
 
     init() {
         try {
@@ -186,7 +208,15 @@ const app = {
         const savedLang = localStorage.getItem('weeklyScheduleLang');
         if (savedLang) this.lang = savedLang;
 
+        try {
+            const savedCats = localStorage.getItem('weeklyScheduleCategories');
+            this.categories = savedCats ? JSON.parse(savedCats) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        } catch(e) {
+            this.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        }
+
         this.initSettingsUI();
+        this.renderCategorySettings();
         this.updateUITexts();
         this.renderGrid();
         this.initModalListeners();
@@ -208,7 +238,7 @@ const app = {
         }
 
         lucide.createIcons();
-        },
+    },
 
     t(key) {
         const parts = key.split('.');
@@ -216,7 +246,166 @@ const app = {
         for(let p of parts) res = res?.[p];
         return res || key;
     },
-    // YENİ FONKSİYONLAR
+
+    // --- RENDER GRID (DÜZELTİLMİŞ) ---
+    renderGrid() {
+        const grid = document.getElementById('scheduleGrid');
+        grid.innerHTML = '';
+        const tr = TRANSLATIONS[this.lang];
+        const isMobile = this.isMobile();
+        
+        let visibleDayKeys = this.viewSettings.visibleDays;
+        if(visibleDayKeys.length === 0) visibleDayKeys = DAYS_KEYS;
+
+        const activeDayKeyMobile = DAYS_KEYS[this.activeMobileDayIndex];
+        const daysToRender = isMobile ? [activeDayKeyMobile] : visibleDayKeys;
+
+        const startMin = timeToMinutes(this.viewSettings.startHour);
+        let endMin = timeToMinutes(this.viewSettings.endHour);
+        if (endMin <= startMin) endMin = startMin + (24*60);
+        
+        const totalDuration = endMin - startMin;
+        const totalSlots = Math.ceil(totalDuration / 30);
+
+        // Grid Style
+        if (isMobile) {
+            grid.style.gridTemplateColumns = '50px 1fr';
+        } else {
+            grid.style.gridTemplateColumns = `80px repeat(${daysToRender.length}, minmax(130px, 1fr))`;
+        }
+        grid.style.gridTemplateRows = `50px repeat(${totalSlots}, ${isMobile ? '80px' : '60px'})`;
+
+        // 1. SOL ÜST KÖŞE
+        const tl = document.createElement('div');
+        tl.className = 'sticky top-0 z-30 bg-gray-50 dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 flex items-center justify-center font-bold text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider transition-colors duration-200';
+        tl.textContent = tr.ui.time;
+        tl.style.gridRow = '1'; tl.style.gridColumn = '1';
+        grid.appendChild(tl);
+
+        // 2. GÜN BAŞLIKLARI
+        daysToRender.forEach((dayKey, index) => {
+            const dayIdx = DAYS_KEYS.indexOf(dayKey);
+            const d = document.createElement('div');
+            d.className = 'sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center font-bold text-gray-700 dark:text-gray-300 text-sm shadow-sm transition-colors duration-200';
+            d.innerHTML = `<span>${tr.days[dayIdx].substring(0, 3)}</span>`;
+            d.style.gridRow = '1';
+            d.style.gridColumn = `${index + 2}`;
+            grid.appendChild(d);
+        });
+
+        // 3. IZGARA
+        let currentMin = startMin;
+        for(let i = 0; i < totalSlots; i++) {
+            const timeStr = minutesToTime(currentMin);
+            const row = CONFIG.rowOffset + i;
+            
+            const timeLabel = document.createElement('div');
+            timeLabel.className = 'border-r border-b border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 sticky left-0 z-20 transition-colors duration-200';
+            timeLabel.style.gridRow = `${row}`; timeLabel.style.gridColumn = '1';
+            
+            const isHour = timeStr.endsWith('00');
+            timeLabel.innerHTML = `<span class="text-xs ${isHour ? 'text-gray-900 dark:text-white font-extrabold' : 'text-gray-400 dark:text-gray-500 font-medium'}">${timeStr}</span>`;
+            grid.appendChild(timeLabel);
+
+            const cellCols = isMobile ? 1 : daysToRender.length;
+            for(let c = 0; c < cellCols; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'border-r border-b border-gray-100 dark:border-gray-800 transition-colors duration-200';
+                cell.style.gridRow = `${row}`; cell.style.gridColumn = `${c + 2}`;
+                grid.appendChild(cell);
+            }
+            currentMin += 30;
+        }
+
+        // 4. ETKİNLİKLER
+        this.events.forEach(ev => {
+            if (!isMobile && !daysToRender.includes(ev.day)) return;
+            if (isMobile && ev.day !== activeDayKeyMobile) return;
+
+            const evStartMin = timeToMinutes(ev.start);
+            const evEndMin = evStartMin + ev.duration;
+
+            if (evStartMin >= endMin || evEndMin <= startMin) return;
+
+            let displayStartMin = Math.max(evStartMin, startMin);
+            let displayEndMin = Math.min(evEndMin, endMin);
+            let displayDuration = displayEndMin - displayStartMin;
+            if (displayDuration <= 0) return;
+
+            const diff = displayStartMin - startMin;
+            const slotIndex = Math.floor(diff / 30);
+            const rowStart = CONFIG.rowOffset + slotIndex;
+            const remainderMinutes = diff % 30;
+            const pxPerMin = isMobile ? (80/30) : (60/30);
+            const topOffset = remainderMinutes * pxPerMin;
+            const exactHeight = displayDuration * pxPerMin;
+
+            let colStart = 2;
+            if (!isMobile) colStart = daysToRender.indexOf(ev.day) + 2;
+
+            const catData = this.categories.find(c => c.id === ev.type) || { color: '#94a3b8', name: 'Unknown' };
+            
+            // --- RENK VE GÖRÜNÜRLÜK DÜZELTMESİ ---
+            let bgColor, borderColor, titleColor, timeColor;
+
+            if (this.isDark) {
+                // KARANLIK MOD
+                // Arka planı %15 opaklığa düşürdük (Şeffaf/Neon görünüm)
+                // Böylece "catData.color" rengindeki saat yazısı net okunacak.
+                bgColor = hexToRgba(catData.color, 0.15);
+                borderColor = catData.color;
+                
+                titleColor = '#ffffff'; 
+                timeColor = catData.color; // Saat yazısı kutu renginde (Neon efekt)
+            } else {
+                // AYDINLIK MOD
+                // Arka plan pastel (%20 opaklık)
+                bgColor = hexToRgba(catData.color, 0.20);
+                borderColor = catData.color;
+                
+                const darkText = adjustBrightness(catData.color, -50); 
+                titleColor = darkText;
+                timeColor = darkText;
+            }
+
+            const titleStyle = `color: ${titleColor}; font-weight: 800; text-shadow: ${this.isDark ? '0 1px 2px rgba(0,0,0,0.5)' : 'none'};`;
+            // Saat fontu kalınlaştırıldı
+            const timeStyle = `color: ${timeColor}; font-weight: 700; font-size: 10px; line-height: 1.2;`;
+
+            const origEnd = minutesToTime(evEndMin >= 1440 ? evEndMin - 1440 : evEndMin);
+            const showDetails = displayDuration >= 25; 
+            
+            const alarmIcon = ev.alarm ? `<div class="absolute top-1 right-1 bg-yellow-400 text-white rounded-full p-0.5 shadow-sm z-20"><i data-lucide="bell" class="w-3 h-3"></i></div>` : '';
+
+            const el = document.createElement('div');
+            const paddingClass = isMobile ? 'p-1' : 'p-2';
+
+            el.className = `event-card m-[2px] rounded-lg ${paddingClass} flex flex-col justify-center cursor-pointer relative overflow-hidden shadow-sm border-2 border-l-4 transition-transform hover:scale-[1.01] hover:shadow-lg`;
+
+            // Inline stiller
+            el.style.backgroundColor = bgColor;
+            el.style.borderColor = borderColor;
+
+            el.style.gridColumn = `${colStart} / span 1`;
+            el.style.gridRow = `${rowStart} / span 1`; 
+            el.style.marginTop = `${topOffset}px`; 
+            el.style.height = `${exactHeight}px`;  
+            el.style.zIndex = '10'; 
+
+            el.innerHTML = `
+                <div class="resize-handle top" onmousedown="app.startResize(event, '${ev.id}', 'start')" ontouchstart="app.startResize(event, '${ev.id}', 'start')"></div>
+                ${alarmIcon}
+                <div class="${isMobile ? 'event-title font-bold' : 'font-bold leading-tight line-clamp-2 pr-2 text-xs'} pointer-events-none" style="${titleStyle}">${ev.title}</div>
+                ${showDetails ? `<div class="${isMobile ? 'event-time' : 'mt-0.5'} pointer-events-none" style="${timeStyle}">${ev.start} - ${origEnd}</div>` : ''}
+                <div class="resize-handle bottom" onmousedown="app.startResize(event, '${ev.id}', 'end')" ontouchstart="app.startResize(event, '${ev.id}', 'end')"></div>
+            `;
+            
+            el.onclick = (e) => { if(!e.target.classList.contains('resize-handle')) this.openEditModal(ev); };
+            grid.appendChild(el);
+        });
+        lucide.createIcons();
+    },
+
     initSettingsUI() {
         const startSelect = document.getElementById('gridStartSelect');
         const endSelect = document.getElementById('gridEndSelect');
@@ -233,8 +422,6 @@ const app = {
             optE.value = t; optE.text = t;
             if(i !== 0) endSelect.appendChild(optE);
         }
-        
-        // Kayıtlı değerleri seç
         startSelect.value = this.viewSettings.startHour;
         endSelect.value = this.viewSettings.endHour;
     },
@@ -286,6 +473,10 @@ const app = {
         document.getElementById('lblDuration').textContent = tr.ui.lblDuration;
         document.getElementById('lblAlarm').textContent = tr.ui.lblAlarm;
         document.getElementById('lblAlarmDesc').textContent = tr.ui.lblAlarmDesc;
+        document.getElementById('lblViewSettings').textContent = tr.ui.settings;
+        document.getElementById('lblGridStart').textContent = tr.ui.lblStart; 
+        document.getElementById('lblGridEnd').textContent = tr.ui.lblEnd;
+        document.getElementById('lblVisibleDays').textContent = tr.ui.lblDay; 
         
         document.getElementById('btnSave').innerHTML = `<i data-lucide="check" class="w-5 h-5"></i> ${tr.ui.btnSave}`;
         document.getElementById('btnDelete').innerHTML = `<i data-lucide="trash-2" class="w-5 h-5"></i> ${tr.ui.btnDelete}`;
@@ -314,24 +505,38 @@ const app = {
         const picker = document.getElementById('colorPicker');
         const oldVal = document.getElementById('inputType').value;
         picker.innerHTML = '';
-        Object.entries(COLORS).forEach(([key, val]) => {
+
+        this.categories.forEach(cat => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            const baseClass = val.class.split(' ').find(c => c.startsWith('bg-'));
-            const pickerClass = `bg-${baseClass ? baseClass.split('-')[1] : 'gray'}-100 dark:bg-${baseClass ? baseClass.split('-')[1] : 'gray'}-800`;
-            btn.className = `h-10 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all ${pickerClass}`;
-            btn.innerHTML = `<span class="opacity-75">${tr.categories[val.labelKey]}</span>`;
-            btn.dataset.value = key;
+            // Dinamik stil
+            btn.className = `h-10 rounded-lg border flex items-center justify-center gap-2 text-xs font-semibold transition-all overflow-hidden relative`;
+            btn.style.backgroundColor = hexToRgba(cat.color, 0.1); 
+            btn.style.borderColor = cat.color;
+            btn.style.color = cat.color; 
+
+            btn.innerHTML = `<span class="truncate px-1">${cat.name}</span>`;
+
+            // Seçili olma durumu
+            if (oldVal === cat.id) {
+                btn.style.backgroundColor = hexToRgba(cat.color, 0.25);
+                btn.style.boxShadow = `0 0 0 2px white, 0 0 0 4px ${cat.color}`;
+            }
+
             btn.onclick = () => {
-                Array.from(picker.children).forEach(c => c.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'dark:ring-offset-gray-900'));
-                btn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'dark:ring-offset-gray-900');
-                document.getElementById('inputType').value = key;
+                Array.from(picker.children).forEach(c => c.style.boxShadow = 'none');
+                btn.style.boxShadow = `0 0 0 2px ${this.isDark ? '#111827' : 'white'}, 0 0 0 4px ${cat.color}`;
+                document.getElementById('inputType').value = cat.id;
             };
             picker.appendChild(btn);
-            if(key === oldVal) btn.click();
         });
-        
-        if(!oldVal) picker.firstElementChild?.click();
+
+        const exists = this.categories.find(c => c.id === oldVal);
+        if(!exists && this.categories.length > 0) {
+            document.getElementById('inputType').value = this.categories[0].id;
+        } else if (!oldVal && this.categories.length > 0) {
+            document.getElementById('inputType').value = this.categories[0].id;
+        }
 
         lucide.createIcons();
     },
@@ -346,6 +551,9 @@ const app = {
         const icon = isDark ? 'sun' : 'moon';
         document.getElementById('mobileThemeIcon')?.setAttribute('data-lucide', icon);
         document.getElementById('desktopThemeIcon')?.setAttribute('data-lucide', icon);
+        
+        this.updateUITexts(); // Renkleri güncelle
+        this.renderGrid();    // Takvimi yeniden çiz
         lucide.createIcons();
     },
 
@@ -396,107 +604,213 @@ const app = {
 
     exportExcel() {
         const tr = TRANSLATIONS[this.lang];
-        const wb = XLSX.utils.book_new();
-        const ws_data = [[tr.ui.time, ...tr.days]];
+        // --- AYARLARI ÇEK ---
+        const visibleDayKeys = this.viewSettings.visibleDays.length > 0 ? this.viewSettings.visibleDays : DAYS_KEYS;
+        const startMin = timeToMinutes(this.viewSettings.startHour);
+        let endMin = timeToMinutes(this.viewSettings.endHour);
+        if (endMin <= startMin) endMin = startMin + (24 * 60); // Gece yarısını geçerse
 
-        for (let i = 0; i < CONFIG.gridRows; i++) { 
-            const hour = Math.floor(i / 2);
-            const min = (i % 2) * 30;
-            const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-            const row = [timeStr, '', '', '', '', '', '', ''];
+        // --- STİL TANIMLARI (xlsx-js-style) ---
+        const borderStyle = { style: "thin", color: { auto: 1 } };
+        const baseStyle = {
+            alignment: { horizontal: "center", vertical: "center", wrapText: true },
+            border: { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle },
+            font: { name: "Arial", sz: 10 }
+        };
+        const headerStyle = {
+            ...baseStyle,
+            font: { name: "Arial", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "4B5563" } }
+        };
+
+        const wb = XLSX.utils.book_new();
+
+        // 1. BAŞLIK SATIRI (Sadece Görünür Günler)
+        const headerRow = [{ v: tr.ui.time, s: headerStyle }];
+        visibleDayKeys.forEach(key => {
+            const dayIndex = DAYS_KEYS.indexOf(key);
+            headerRow.push({ v: tr.days[dayIndex], s: headerStyle });
+        });
+        const ws_data = [headerRow];
+
+        // 2. SAAT SATIRLARI (Sadece Seçili Aralık)
+        const totalSlots = Math.ceil((endMin - startMin) / 30);
+        
+        for (let i = 0; i < totalSlots; i++) {
+            const currentSlotMin = startMin + (i * 30);
+            const timeStr = minutesToTime(currentSlotMin);
+            
+            const row = [];
+            // Saat hücresi
+            row.push({ v: timeStr, s: baseStyle });
+            
+            // Gün hücreleri (Boş ama kenarlıklı)
+            for (let d = 0; d < visibleDayKeys.length; d++) {
+                row.push({ v: "", s: baseStyle });
+            }
             ws_data.push(row);
         }
 
+        // 3. ETKİNLİKLERİ YERLEŞTİR
         const merges = [];
+
         this.events.forEach(ev => {
-            const dayIndex = DAYS_KEYS.indexOf(ev.day);
-            if (dayIndex === -1) return;
-            const colIndex = dayIndex + 1; 
+            // A. Gün Filtresi: Etkinlik günü görünür günlerde mi?
+            if (!visibleDayKeys.includes(ev.day)) return;
 
-            const [h, m] = ev.start.split(':').map(Number);
-            const startSlot = (h * 2) + (m === 30 ? 1 : 0);
-            const excelRowIndex = startSlot + 1;
-            const durationSlots = Math.ceil(ev.duration / 30);
-            const catName = tr.categories[COLORS[ev.type]?.labelKey] || ev.type;
+            // B. Saat Filtresi: Etkinlik görünür saat aralığında mı?
+            const evStartMin = timeToMinutes(ev.start);
+            const evEndMin = evStartMin + ev.duration;
+
+            // Çakışma kontrolü (Görünür aralığa giriyor mu?)
+            if (evEndMin <= startMin || evStartMin >= endMin) return;
+
+            // C. Koordinatları Hesapla
+            // Sütun İndeksi
+            const dayColIndex = visibleDayKeys.indexOf(ev.day) + 1; // +1 Time sütunu için
+
+            // Satır İndeksi (Kırpma mantığı ile)
+            const displayStartMin = Math.max(evStartMin, startMin);
+            const displayEndMin = Math.min(evEndMin, endMin);
             
-            if (ws_data[excelRowIndex]) {
-                ws_data[excelRowIndex][colIndex] = `${ev.title} (${catName})`;
-            }
+            // Excel satırı hesaplama (Başlangıç dakikasına göre ofset)
+            const rowOffset = Math.floor((displayStartMin - startMin) / 30);
+            const excelRowIndex = rowOffset + 1; // +1 Başlık satırı için
 
-            if (durationSlots > 1) {
-                merges.push({
-                    s: { r: excelRowIndex, c: colIndex }, 
-                    e: { r: excelRowIndex + durationSlots - 1, c: colIndex } 
-                });
+            // Süre (Kaç hücre birleşecek?)
+            const durationSlots = Math.ceil((displayEndMin - displayStartMin) / 30);
+
+            // D. Stil ve Renk
+            const cat = this.categories.find(c => c.id === ev.type);
+            const catName = cat ? cat.name : ev.type;
+            let hexColor = cat ? cat.color : "FFFFFF";
+            if(hexColor.startsWith('#')) hexColor = hexColor.substring(1);
+
+            const eventStyle = {
+                alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                border: { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle },
+                font: { name: "Arial", sz: 10, bold: true },
+                fill: { fgColor: { rgb: hexColor } }
+            };
+
+            // E. Veriyi Yaz
+            if (ws_data[excelRowIndex] && ws_data[excelRowIndex][dayColIndex]) {
+                ws_data[excelRowIndex][dayColIndex] = {
+                    v: `${ev.title}\n(${catName})`,
+                    s: eventStyle
+                };
+
+                // Merge edilecek diğer hücreleri de boya (Kenarlık için)
+                for(let k=1; k<durationSlots; k++) {
+                    if(ws_data[excelRowIndex + k]) {
+                        ws_data[excelRowIndex + k][dayColIndex] = { v: "", s: eventStyle };
+                    }
+                }
+
+                // Merge Ekle
+                if (durationSlots > 1) {
+                    merges.push({
+                        s: { r: excelRowIndex, c: dayColIndex },
+                        e: { r: excelRowIndex + durationSlots - 1, c: dayColIndex }
+                    });
+                }
             }
         });
 
-        const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        // 4. DOSYAYI OLUŞTUR
+        const ws = XLSX.utils.aoa_to_sheet([]);
+        XLSX.utils.sheet_add_aoa(ws, ws_data, { origin: "A1" });
+
         if (merges.length > 0) ws['!merges'] = merges;
-        ws['!cols'] = [{ wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+
+        // Sütun Genişlikleri
+        const cols = [{ wch: 10 }]; // Saat
+        visibleDayKeys.forEach(() => cols.push({ wch: 20 })); // Günler
+        ws['!cols'] = cols;
 
         XLSX.utils.book_append_sheet(wb, ws, "Program");
-        XLSX.writeFile(wb, "HaftalikProgram_Tablo.xlsx");
+        XLSX.writeFile(wb, "HaftalikProgram_Ozel.xlsx");
     },
 
     async exportPDF() {
         const tr = TRANSLATIONS[this.lang];
-        if (window.location.protocol === 'file:') console.warn("Font issue possible on file protocol.");
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        const fontUrl = 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.ttf';
         
+        // DEĞİŞİKLİK: Google Fonts yerine CORS destekleyen bir CDN adresi kullanıyoruz.
+        const fontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf';
+        
+        const getTableData = () => {
+            return this.events.map(ev => {
+                const cat = this.categories.find(c => c.id === ev.type);
+                const catName = cat ? cat.name : ev.type;
+                return [
+                    tr.days[DAYS_KEYS.indexOf(ev.day)], // Gün
+                    ev.start,                           // Saat
+                    ev.title,                           // Başlık
+                    catName                             // Kategori
+                ];
+            }).sort((a,b) => {
+                // Sıralama mantığı: Önce gün, sonra saat
+                const da = tr.days.indexOf(a[0]);
+                const db = tr.days.indexOf(b[0]);
+                if(da !== db) return da - db;
+                return a[1].localeCompare(b[1]);
+            });
+        };
+
         try {
             const response = await fetch(fontUrl);
             if (!response.ok) throw new Error("Font fetch failed");
+            
             const blob = await response.blob();
             const reader = new FileReader();
+            
             reader.readAsDataURL(blob);
             reader.onloadend = () => {
                 const base64data = reader.result.split(',')[1];
+                
+                // Fontu sanal dosya sistemine ekle
                 doc.addFileToVFS('Roboto-Regular.ttf', base64data);
+                // Fontu kaydet (Adını 'Roboto' koyduk)
                 doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-                doc.setFont('Roboto');
+                
+                // Döküman genelinde fontu ayarla
+                doc.setFont('Roboto'); 
                 doc.setFontSize(16);
                 doc.text(tr.title, 14, 20);
 
-                const tableData = this.events.map(ev => [
-                    tr.days[DAYS_KEYS.indexOf(ev.day)],
-                    ev.start,
-                    ev.title,
-                    tr.categories[COLORS[ev.type]?.labelKey] || ''
-                ]).sort((a,b) => {
-                    const da = tr.days.indexOf(a[0]);
-                    const db = tr.days.indexOf(b[0]);
-                    if(da !== db) return da - db;
-                    return a[1].localeCompare(b[1]);
-                });
-
                 doc.autoTable({
                     head: [[tr.ui.lblDay, tr.ui.lblStart, tr.ui.lblTitle, tr.ui.lblCategory]],
-                    body: tableData,
+                    body: getTableData(),
                     startY: 30,
                     theme: 'grid',
-                    styles: { font: 'Roboto', fontStyle: 'normal', fontSize: 10 },
-                    headStyles: { font: 'Roboto', fillColor: [45, 55, 72], textColor: 255 }
+                    styles: { 
+                        font: 'Roboto', // Tablo hücresi için font
+                        fontStyle: 'normal', 
+                        fontSize: 10 
+                    },
+                    headStyles: { 
+                        font: 'Roboto', // Tablo başlığı için font
+                        fillColor: [45, 55, 72], 
+                        textColor: 255 
+                    }
                 });
                 doc.save("HaftalikProgram.pdf");
             };
             reader.onerror = () => { throw new Error("File read error"); };
         } catch (e) {
             console.error("PDF Error:", e);
-            alert("PDF Error: Font could not be loaded. Exporting with default font.");
+            alert("Font yüklenemedi (İnternet bağlantınızı kontrol edin). Standart font ile indiriliyor.");
+            
+            // Hata olursa varsayılan font ile devam et
+            doc.setFont("helvetica");
             doc.autoTable({
                 head: [[tr.ui.lblDay, tr.ui.lblStart, tr.ui.lblTitle, tr.ui.lblCategory]],
-                body: this.events.map(ev => [
-                    tr.days[DAYS_KEYS.indexOf(ev.day)],
-                    ev.start,
-                    ev.title,
-                    tr.categories[COLORS[ev.type]?.labelKey] || ''
-                ]),
+                body: getTableData(),
                 startY: 30
             });
-            doc.save("HaftalikProgram_Simple.pdf");
+            doc.save("HaftalikProgram_Basit.pdf");
         }
     },
 
@@ -507,16 +821,29 @@ const app = {
         }
         const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, HeadingLevel, TextRun, AlignmentType } = window.docx;
         const tr = TRANSLATIONS[this.lang];
-        const WORD_COLORS = {
-            sleep: 'E0E7FF', education: 'DBEAFE', work: 'DCFCE7', community: 'F3E8FF',
-            meal: 'FFEDD5', special: 'FCE7F3', chores: 'E5E7EB', coding: 'FFFFFF'
-        };
-        const sorted = [...this.events].sort((a,b) => {
+        
+        // Ayarları al
+        const visibleDayKeys = this.viewSettings.visibleDays.length > 0 ? this.viewSettings.visibleDays : DAYS_KEYS;
+        const startMin = timeToMinutes(this.viewSettings.startHour);
+        let endMin = timeToMinutes(this.viewSettings.endHour);
+        if (endMin <= startMin) endMin = startMin + (24 * 60);
+
+        // Filtreleme
+        const filteredEvents = this.events.filter(ev => {
+            if (!visibleDayKeys.includes(ev.day)) return false;
+            const evStart = timeToMinutes(ev.start);
+            const evEnd = evStart + ev.duration;
+            return (evEnd > startMin && evStart < endMin);
+        });
+
+        const sorted = filteredEvents.sort((a,b) => {
             const da = DAYS_KEYS.indexOf(a.day);
             const db = DAYS_KEYS.indexOf(b.day);
             if(da !== db) return da - db;
             return a.start.localeCompare(b.start);
         });
+
+        // Tablo Başlıkları
         const headerCells = [tr.ui.lblDay, tr.ui.lblStart, tr.ui.lblTitle, tr.ui.lblCategory, tr.ui.lblDuration].map(text => {
             return new TableCell({
                 children: [new Paragraph({
@@ -529,10 +856,14 @@ const app = {
             });
         });
         const headerRow = new TableRow({ children: headerCells });
+        
+        // Tablo Verileri
         const dataRows = sorted.map(ev => {
-            const color = WORD_COLORS[ev.type] || 'FFFFFF';
-            const catName = tr.categories[COLORS[ev.type]?.labelKey] || ev.type;
+            const cat = this.categories.find(c => c.id === ev.type);
+            const color = cat ? cat.color.replace('#', '') : 'FFFFFF';
+            const catName = cat ? cat.name : ev.type;
             const dayName = tr.days[DAYS_KEYS.indexOf(ev.day)];
+            
             const cells = [dayName, ev.start, ev.title, catName, ev.duration + ' dk'].map(text => {
                 return new TableCell({
                     children: [new Paragraph(text)],
@@ -542,6 +873,7 @@ const app = {
             });
             return new TableRow({ children: cells });
         });
+
         const doc = new Document({
             sections: [{
                 properties: {},
@@ -549,6 +881,11 @@ const app = {
                     new Paragraph({
                         text: tr.title,
                         heading: HeadingLevel.HEADING_1,
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 200 }
+                    }),
+                    new Paragraph({
+                        text: `Range: ${this.viewSettings.startHour} - ${this.viewSettings.endHour}`,
                         alignment: AlignmentType.CENTER,
                         spacing: { after: 400 }
                     }),
@@ -559,6 +896,7 @@ const app = {
                 ]
             }]
         });
+
         Packer.toBlob(doc).then(blob => {
             saveAs(blob, "HaftalikProgram.docx");
         }).catch(err => {
@@ -687,148 +1025,16 @@ const app = {
         document.getElementById('mobileCurrentDayDisplay').textContent = tr.days[this.activeMobileDayIndex];
     },
 
-    renderGrid() {
-        const grid = document.getElementById('scheduleGrid');
-        grid.innerHTML = '';
-        const tr = TRANSLATIONS[this.lang];
-        const isMobile = this.isMobile();
-        
-        // Görünür günleri ve saatleri ayarla
-        let visibleDayKeys = this.viewSettings.visibleDays;
-        if(visibleDayKeys.length === 0) visibleDayKeys = DAYS_KEYS;
-
-        const activeDayKeyMobile = DAYS_KEYS[this.activeMobileDayIndex];
-        const daysToRender = isMobile ? [activeDayKeyMobile] : visibleDayKeys;
-
-        const startMin = timeToMinutes(this.viewSettings.startHour);
-        let endMin = timeToMinutes(this.viewSettings.endHour);
-        if (endMin <= startMin) endMin = startMin + (24*60);
-        
-        const totalDuration = endMin - startMin;
-        const totalSlots = Math.ceil(totalDuration / 30);
-
-        // Grid Style Ayarla
-        const colCount = isMobile ? 2 : (daysToRender.length + 1);
-        
-        if (isMobile) {
-            grid.style.gridTemplateColumns = '50px 1fr';
-        } else {
-            grid.style.gridTemplateColumns = `80px repeat(${daysToRender.length}, minmax(130px, 1fr))`;
-        }
-        grid.style.gridTemplateRows = `50px repeat(${totalSlots}, ${isMobile ? '80px' : '60px'})`;
-
-        // Başlık (Zaman)
-        const tl = document.createElement('div');
-        tl.className = 'sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 flex items-center justify-center font-bold text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider transition-colors duration-200';
-        tl.textContent = tr.ui.time;
-        tl.style.gridRow = '1'; tl.style.gridColumn = '1';
-        grid.appendChild(tl);
-
-        // Başlık (Günler)
-        daysToRender.forEach((dayKey, index) => {
-            const dayIdx = DAYS_KEYS.indexOf(dayKey);
-            const d = document.createElement('div');
-            d.className = 'sticky top-0 z-20 bg-gray-50 dark:bg-gray-800 border-b border-r border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center font-bold text-gray-700 dark:text-gray-300 text-sm shadow-sm transition-colors duration-200';
-            d.innerHTML = `<span>${tr.days[dayIdx].substring(0, 3)}</span>`;
-            d.style.gridRow = '1';
-            d.style.gridColumn = `${index + 2}`;
-            grid.appendChild(d);
-        });
-
-        // Satırlar ve Hücreler
-        let currentMin = startMin;
-        for(let i = 0; i < totalSlots; i++) {
-            const timeStr = minutesToTime(currentMin);
-            const row = CONFIG.rowOffset + i;
-            
-            const timeLabel = document.createElement('div');
-            timeLabel.className = 'border-r border-b border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center bg-white dark:bg-gray-900 sticky left-0 z-10 transition-colors duration-200';
-            timeLabel.style.gridRow = `${row}`; timeLabel.style.gridColumn = '1';
-            const isHour = timeStr.endsWith('00');
-            timeLabel.innerHTML = `<span class="text-xs ${isHour ? 'text-gray-800 dark:text-gray-200 font-bold' : 'text-gray-400 dark:text-gray-600 font-medium'}">${timeStr}</span>`;
-            grid.appendChild(timeLabel);
-
-            const cellCols = isMobile ? 1 : daysToRender.length;
-            for(let c = 0; c < cellCols; c++) {
-                const cell = document.createElement('div');
-                cell.className = 'border-r border-b border-gray-100 dark:border-gray-800 transition-colors duration-200';
-                cell.style.gridRow = `${row}`; cell.style.gridColumn = `${c + 2}`;
-                grid.appendChild(cell);
-            }
-            currentMin += 30;
-        }
-
-        // Etkinlikleri Çiz
-        this.events.forEach(ev => {
-            if (!isMobile && !daysToRender.includes(ev.day)) return;
-            if (isMobile && ev.day !== activeDayKeyMobile) return;
-
-            const evStartMin = timeToMinutes(ev.start);
-            const evEndMin = evStartMin + ev.duration;
-
-            // Görünüm dışındaysa atla
-            if (evStartMin >= endMin || evEndMin <= startMin) return;
-
-            // Kırpma hesabı
-            let displayStartMin = Math.max(evStartMin, startMin);
-            let displayEndMin = Math.min(evEndMin, endMin);
-            let displayDuration = displayEndMin - displayStartMin;
-            if (displayDuration <= 0) return;
-
-            const diff = displayStartMin - startMin;
-            const slotIndex = Math.floor(diff / 30);
-            const rowStart = CONFIG.rowOffset + slotIndex;
-            const remainderMinutes = diff % 30;
-            const pxPerMin = isMobile ? (80/30) : (60/30);
-            const topOffset = remainderMinutes * pxPerMin;
-            const exactHeight = displayDuration * pxPerMin;
-
-            let colStart = 2;
-            if (!isMobile) colStart = daysToRender.indexOf(ev.day) + 2;
-
-            const style = COLORS[ev.type] || COLORS.coding;
-            const el = document.createElement('div');
-            const paddingClass = isMobile ? 'p-1' : 'p-2';
-            el.className = `event-card m-[2px] rounded-lg ${paddingClass} flex flex-col justify-center cursor-pointer relative overflow-hidden shadow-sm border ${style.class}`;
-            el.style.gridColumn = `${colStart} / span 1`;
-            el.style.gridRow = `${rowStart} / span 1`; 
-            el.style.marginTop = `${topOffset}px`; 
-            el.style.height = `${exactHeight}px`;  
-            el.style.zIndex = '10'; 
-
-            const showDetails = exactHeight > 25;
-            const alarmIcon = ev.alarm ? `<i data-lucide="bell" class="w-3 h-3 absolute top-1 right-1 opacity-60"></i>` : '';
-            const origEnd = minutesToTime(evStartMin + ev.duration);
-            
-            el.innerHTML = `
-                <div class="resize-handle top" onmousedown="app.startResize(event, '${ev.id}', 'start')" ontouchstart="app.startResize(event, '${ev.id}', 'start')"></div>
-                ${alarmIcon}
-                <div class="${isMobile ? 'event-title font-bold' : 'font-bold leading-tight line-clamp-2 pr-2 text-xs'} pointer-events-none">${ev.title}</div>
-                ${showDetails ? `<div class="${isMobile ? 'event-time opacity-75' : 'mt-1 opacity-75 text-[10px]'} pointer-events-none">${ev.start} - ${origEnd}</div>` : ''}
-                <div class="resize-handle bottom" onmousedown="app.startResize(event, '${ev.id}', 'end')" ontouchstart="app.startResize(event, '${ev.id}', 'end')"></div>
-            `;
-            
-            el.onclick = (e) => { if(!e.target.classList.contains('resize-handle')) this.openEditModal(ev); };
-            grid.appendChild(el);
-        });
-        lucide.createIcons();
-    },
-
-    // --- YENİ EKLENEN FONKSİYON: ÇAKIŞMA KONTROLÜ ---
     checkOverlap(newEvent) {
         const newStart = timeToMinutes(newEvent.start);
         const newEnd = newStart + newEvent.duration;
 
         return this.events.some(ev => {
-            // Kendisiyle çakışmayı kontrol etme (Düzenleme modu için)
             if (ev.id == newEvent.id) return false;
-            // Farklı gün ise kontrol etme
             if (ev.day !== newEvent.day) return false;
 
             const evStart = timeToMinutes(ev.start);
             const evEnd = evStart + ev.duration;
-
-            // Çakışma mantığı: (A Biter > B Başlar) VE (A Başlar < B Biter)
             return (newEnd > evStart && newStart < evEnd);
         });
     },
@@ -862,7 +1068,6 @@ const app = {
             }
         };
 
-        // --- YENİ EKLENEN FONKSİYON: OTOMATİK SÜRE KISITLAMA ---
         const autoAdjustDuration = () => {
             const day = iDay.value;
             const startVal = iStart.value;
@@ -871,24 +1076,12 @@ const app = {
             if (!startVal) return;
 
             const startMin = timeToMinutes(startVal);
-            
-            // Bu günün diğer etkinliklerini bul (kendi hariç)
             const otherEvents = this.events.filter(e => e.day === day && e.id != currentId);
-            
-            // Varsayılan olarak gece yarısına kadar (24:00) izin var
             let limitMin = 24 * 60;
-            
-            // Seçilen saatten SONRA başlayan ilk etkinliği bul
             let nextEventStart = limitMin;
 
             otherEvents.forEach(ev => {
                 const evStart = timeToMinutes(ev.start);
-                const evEnd = evStart + ev.duration;
-
-                // Eğer seçilen saat bir etkinliğin İÇİNDEYSE (Tam çakışma), yapacak bir şey yok
-                // Kaydetme sırasında hata verecek zaten.
-                
-                // Eğer bu etkinlik bizimkinden SONRA başlıyorsa
                 if (evStart >= startMin) {
                     if (evStart < nextEventStart) {
                         nextEventStart = evStart;
@@ -896,22 +1089,16 @@ const app = {
                 }
             });
 
-            // Maksimum kullanılabilir süre
             const maxDuration = nextEventStart - startMin;
-
-            // Eğer mevcut süre bu boşluktan büyükse, kısalt
-            let currentDur = parseInt(iDur.value) || 60; // Default 60
+            let currentDur = parseInt(iDur.value) || 60;
             if (currentDur > maxDuration) {
-                // Eğer maxDuration 0 veya negatifse (zaten çakışmışsa), en az 15dk verelim
                 if (maxDuration <= 0) currentDur = 15; 
                 else currentDur = maxDuration;
-                
                 iDur.value = currentDur;
-                syncEnd(); // Bitiş saatini güncelle
+                syncEnd();
             }
         };
 
-        // Başlangıç saati veya gün değişirse süreyi sığdır
         iStart.addEventListener('change', () => {
             autoAdjustDuration();
             syncEnd();
@@ -920,7 +1107,6 @@ const app = {
             autoAdjustDuration();
         });
 
-        // Süre değişirse bitişi güncelle (Manuel süre girişi)
         iDur.addEventListener('input', syncEnd);
         iEnd.addEventListener('change', syncDur);
 
@@ -954,6 +1140,7 @@ const app = {
     },
     openSettingsModal() {
         document.getElementById('settingsModal').classList.add('active');
+        this.renderCategorySettings(); 
     },
     closeSettingsModal() {
         document.getElementById('settingsModal').classList.remove('active');
@@ -970,10 +1157,9 @@ const app = {
         document.getElementById('inputDay').value = defaultDay;
 
         const picker = document.getElementById('colorPicker');
-        Array.from(picker.children).forEach(c => c.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'dark:ring-offset-gray-900'));
-        picker.firstElementChild.click(); 
+        Array.from(picker.children).forEach(c => c.style.boxShadow = 'none');
+        if(picker.firstElementChild) picker.firstElementChild.click(); 
 
-        // Event trigger ederek oto kontrolü çalıştır
         document.getElementById('inputStart').dispatchEvent(new Event('change'));
         this.openModal(false);
     },
@@ -987,10 +1173,14 @@ const app = {
         document.getElementById('inputAlarm').checked = ev.alarm === true;
 
         const picker = document.getElementById('colorPicker');
-        const btn = picker.querySelector(`button[data-value="${ev.type}"]`) || picker.firstElementChild;
-        if(btn) btn.click();
+        let catId = ev.type;
+        if (!this.categories.find(c => c.id === catId) && this.categories.length > 0) {
+            catId = this.categories[0].id;
+        }
 
-        // Event trigger ederek oto kontrolü çalıştır
+        document.getElementById('inputType').value = catId;
+        this.updateUITexts(); 
+
         document.getElementById('inputStart').dispatchEvent(new Event('change'));
         this.openModal(true);
     },
@@ -1007,10 +1197,9 @@ const app = {
             alarm: document.getElementById('inputAlarm').checked
         };
 
-        // --- ÇAKIŞMA KONTROLÜ ---
         if (this.checkOverlap(data)) {
             alert(this.t('ui.overlapError'));
-            return; // Kaydetmeyi durdur
+            return; 
         }
 
         const idx = this.events.findIndex(e => e.id == id);
@@ -1024,6 +1213,8 @@ const app = {
     resetSchedule() {
         if(confirm(this.t('ui.resetConfirm'))) {
             this.events = JSON.parse(JSON.stringify(INITIAL_EVENTS));
+            this.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+            this.saveCategories();
             this.save();
             this.closeSettingsModal();
         }
@@ -1036,9 +1227,7 @@ const app = {
             this.closeSettingsModal();
         }
     },
-    // ... app objesi içinde metod olarak ekle ...
 
-// 1. Sürüklemeyi Başlat
     startResize(e, eventId, direction) { 
         e.stopPropagation();
         e.preventDefault();
@@ -1057,9 +1246,7 @@ const app = {
         const handle = e.target;
         const el = handle.closest('.event-card');
         
-        // Mevcut değerleri al
         const currentHeight = el.getBoundingClientRect().height;
-        // Mevcut margin-top değerini al (parse et)
         const currentMarginTop = parseFloat(window.getComputedStyle(el).marginTop) || 0;
 
         this.dragState = {
@@ -1068,10 +1255,8 @@ const app = {
             direction: direction,
             startY: clientY,
             el: el,
-            // Başlangıç referansları
             startHeight: currentHeight,
             startMarginTop: currentMarginTop,
-            
             originalDuration: ev.duration,
             originalStartMin: eventStartMin,
             pxPerMin: pxPerMin,
@@ -1090,7 +1275,6 @@ const app = {
         window.addEventListener('touchend', this.stopResize);
     },
 
-    // 2. Sürükleme Hareketi
     handleResizeMove: (e) => {
         if (!app.dragState.isDragging) return;
 
@@ -1105,7 +1289,6 @@ const app = {
         let newStart = s.originalStartMin;
 
         if (s.direction === 'end') {
-            // ALTTAN ÇEKME: Sadece yükseklik değişir
             newDur = s.originalDuration + diffMin;
             if (newDur < 15) newDur = 15; 
             
@@ -1116,42 +1299,28 @@ const app = {
             s.el.style.height = `${newPixelHeight}px`;
 
         } else {
-            // ÜSTTEN ÇEKME: Margin-top ve Yükseklik değişir
             newStart = s.originalStartMin + diffMin;
             newDur = s.originalDuration - diffMin;
 
             if (newDur < 15) {
                 newDur = 15;
                 newStart = s.originalStartMin + s.originalDuration - 15;
-                // Minimum süreye ulaşıldığında diffMin'i sabitlemek gerekir ama
-                // basitlik için görseli minHeight'te tutuyoruz.
             }
 
-            // Görsel Hesaplama:
-            // Aşağı çekersem (diffY pozitif): Margin artar, Height azalır.
-            // Yukarı çekersem (diffY negatif): Margin azalır, Height artar.
-            
             const minHeight = 15 * s.pxPerMin;
-            
-            // Yeni yükseklik
             let newPixelHeight = s.startHeight - diffY;
-            // Yeni üst boşluk
             let newMarginTop = s.startMarginTop + diffY;
 
-            // Sınır Kontrolü (Min 15dk)
             if (newPixelHeight < minHeight) {
-                // Eğer min yüksekliğe dayandıysa, margin daha fazla artmamalı (aşağı itmemeli)
-                // Farkın ne kadarının "geçerli" olduğunu bul
                 const overflow = minHeight - newPixelHeight; 
                 newPixelHeight = minHeight;
-                newMarginTop -= overflow; // Fazla itmeyi geri al
+                newMarginTop -= overflow;
             }
 
             s.el.style.height = `${newPixelHeight}px`;
             s.el.style.marginTop = `${newMarginTop}px`;
         }
 
-        // Saat Formatlama
         let displayStart = newStart;
         if(displayStart >= 1440) displayStart -= 1440;
         if(displayStart < 0) displayStart += 1440;
@@ -1162,7 +1331,6 @@ const app = {
         s.newDuration = newDur;
         s.newStartMin = newStart;
 
-        // Tooltip Güncelleme
         const tooltip = document.getElementById('dragTooltip');
         if (tooltip) {
             const strStart = minutesToTime(displayStart);
@@ -1178,7 +1346,6 @@ const app = {
         }
     },
 
-    // 3. Sürükleme Bitti
     stopResize: () => {
         const s = app.dragState;
         if (!s.isDragging) return;
@@ -1204,7 +1371,6 @@ const app = {
         if (evIndex > -1) {
             const oldEvent = app.events[evIndex];
             
-            // Başlangıç dakikasını hesapla (Gün döngüsü korumalı)
             let finalStart = s.newStartMin;
             while(finalStart >= 1440) finalStart -= 1440;
             while(finalStart < 0) finalStart += 1440;
@@ -1215,21 +1381,14 @@ const app = {
                 duration: s.newDuration 
             };
 
-            // --- YENİ EKLENEN KISIM: ERTESİ GÜN KONTROLÜ ---
-            // Eğer etkinlik gece yarısını (1440 dk) geçiyorsa
-            // Örn: Başlangıç 23:00 (1380 dk) + Süre 120 dk = Bitiş 1500 dk (Gece 01:00)
             const absoluteEnd = s.newStartMin + s.newDuration;
             
             if (absoluteEnd > 1440) {
-                const overflowAmount = absoluteEnd - 1440; // Örn: 60 dk taşma
-                
-                // 1. Sonraki günü bul
+                const overflowAmount = absoluteEnd - 1440; 
                 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                 const currentDayIdx = days.indexOf(oldEvent.day);
-                const nextDay = days[(currentDayIdx + 1) % 7]; // Döngüsel (Pazar -> Pzt)
+                const nextDay = days[(currentDayIdx + 1) % 7]; 
 
-                // 2. Sonraki günün sabahında, taşma süresi içinde kalan etkinliği bul (Genelde Uyku)
-                // Şart: 00:00 ile Taşma Süresi (örn 01:00) arasında başlayan bir şey var mı?
                 const nextDayEvIndex = app.events.findIndex(e => 
                     e.day === nextDay && 
                     timeToMinutes(e.start) < overflowAmount
@@ -1239,23 +1398,16 @@ const app = {
                     const nextEv = app.events[nextDayEvIndex];
                     const nextEvStart = timeToMinutes(nextEv.start);
                     
-                    // Örn: Uyku 00:00'da başlıyor, biz 01:00'e kadar taştık.
-                    // Yeni Uyku Başlangıcı: 01:00
-                    // Yeni Uyku Süresi: Eski Süre - (Taşma - Eski Başlangıç)
-                    
                     const shiftAmount = overflowAmount - nextEvStart;
                     const newNextDuration = nextEv.duration - shiftAmount;
 
                     if (newNextDuration > 0) {
-                        // Sonraki günün etkinliğini güncelle
                         app.events[nextDayEvIndex] = {
                             ...nextEv,
-                            start: minutesToTime(overflowAmount), // Yeni başlangıç saati
+                            start: minutesToTime(overflowAmount), 
                             duration: newNextDuration
                         };
                     } else {
-                        // Eğer taşma, uykuyu tamamen yutuyorsa, o etkinliği silmek isteyebilirsin
-                        // Şimdilik 15 dk'da bırakalım ki kaybolmasın
                          app.events[nextDayEvIndex] = {
                             ...nextEv,
                             start: minutesToTime(overflowAmount),
@@ -1264,9 +1416,7 @@ const app = {
                     }
                 }
             }
-            // ---------------------------------------------------
 
-            // Çakışma kontrolü (Kendi gününde başka şeye çarpıyor mu?)
             if (app.checkOverlap(updatedEvent)) {
                 alert(app.t('ui.overlapError'));
                 app.renderGrid(); 
@@ -1277,6 +1427,70 @@ const app = {
         }
         s.isDragging = false;
     },
+
+    renderCategorySettings() {
+        const list = document.getElementById('categoryListContainer');
+        if(!list) return;
+        list.innerHTML = '';
+
+        this.categories.forEach((cat, index) => {
+            const item = document.createElement('div');
+            item.className = 'category-item flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700';
+
+            item.innerHTML = `
+                <div class="flex items-center gap-2 flex-1">
+                    <div class="color-input-wrapper">
+                        <input type="color" value="${cat.color}" class="custom-color-input" 
+                            onchange="app.updateCategory('${cat.id}', 'color', this.value)">
+                    </div>
+                    <input type="text" value="${cat.name}" 
+                        class="bg-transparent border-none outline-none text-sm font-medium text-gray-700 dark:text-gray-200 w-full"
+                        onchange="app.updateCategory('${cat.id}', 'name', this.value)">
+                </div>
+                ${this.categories.length > 1 ? `
+                <button onclick="app.deleteCategory('${cat.id}')" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>` : ''}
+            `;
+            list.appendChild(item);
+        });
+        lucide.createIcons();
+    },
+
+    addNewCategory() {
+        const newId = 'cat_' + Date.now();
+        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+
+        this.categories.push({
+            id: newId,
+            name: 'New Category',
+            color: randomColor
+        });
+
+        this.saveCategories();
+    },
+
+    updateCategory(id, field, value) {
+        const cat = this.categories.find(c => c.id === id);
+        if(cat) {
+            cat[field] = value;
+            this.saveCategories();
+        }
+    },
+
+    deleteCategory(id) {
+        if(confirm('Delete this category? Activities with this category will remain but look gray.')) {
+            this.categories = this.categories.filter(c => c.id !== id);
+            this.saveCategories();
+        }
+    },
+
+    saveCategories() {
+        localStorage.setItem('weeklyScheduleCategories', JSON.stringify(this.categories));
+        this.renderCategorySettings(); 
+        this.updateUITexts(); 
+        this.renderGrid(); 
+    }
 };
 
 window.onload = () => app.init();
