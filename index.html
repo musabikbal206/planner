@@ -93,6 +93,10 @@
         </div>
     </main>
 
+    <button id="mobileEditToggle" onclick="app.toggleMobileEditMode()" class="md:hidden fixed bottom-6 left-6 w-14 h-14 bg-gray-800 text-white rounded-full shadow-xl flex items-center justify-center z-40 active:scale-90 transition-transform border border-gray-600">
+        <i id="mobileEditIcon" data-lucide="lock" class="w-6 h-6"></i>
+    </button>
+
     <button onclick="app.openNewEventModal()" class="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center z-40 active:scale-90 transition-transform hover:bg-blue-700">
         <i data-lucide="plus" class="w-8 h-8"></i>
     </button>
@@ -127,12 +131,9 @@
                 </div>
 
                 <div>
-                    <label id="lblDay" class="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mb-1">Day</label>
-                    <div class="relative">
-                        <select id="inputDay" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl appearance-none focus:ring-2 focus:ring-blue-500 outline-none font-medium text-gray-900 dark:text-white transition-colors">
-                        </select>
-                        <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"></i>
-                    </div>
+                    <label id="lblDay" class="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mb-2">Days</label>
+                    <div class="flex flex-wrap gap-2" id="daySelectionContainer">
+                        </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -140,7 +141,7 @@
                     
                     <div>
                         <label id="lblStart" class="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mb-1">Start</label>
-                        <input type="time" id="inputStart" required class="w-full px-3 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-gray-900 dark:text-white transition-colors">
+                        <input type="time" id="inputStart" step="60" required class="w-full px-3 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-gray-900 dark:text-white transition-colors">
                     </div>
                     
                     <div>
@@ -150,7 +151,7 @@
 
                     <div class="col-span-2 flex items-center gap-3 pt-1 border-t border-gray-200 dark:border-gray-700 mt-1">
                          <label id="lblDuration" class="text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Duration (Min):</label>
-                         <input type="number" id="inputDuration" step="15" min="15" required class="w-full bg-transparent border-none outline-none font-bold text-gray-900 dark:text-white text-right focus:ring-0 p-0" placeholder="60">
+                         <input type="number" id="inputDuration" step="1" min="1" required class="w-full bg-transparent border-none outline-none font-bold text-gray-900 dark:text-white text-right focus:ring-0 p-0" placeholder="60">
                     </div>
                 </div>
 

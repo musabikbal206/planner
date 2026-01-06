@@ -186,3 +186,67 @@ input[type="color"].custom-color-input {
     background-color: #1e293b;
     border-color: #334155;
 }
+
+/* MOBILE EDIT MODE LOGIC */
+@media (max-width: 768px) {
+    /* Varsayılan olarak tutamaçları gizle */
+    .resize-handle {
+        display: none !important;
+    }
+    
+    /* Kilit açıldığında (body'de .mobile-edit-active varsa) göster */
+    body.mobile-edit-active .resize-handle {
+        display: flex !important;
+    }
+
+    /* Kilit butonu aktifse rengini değiştir */
+    body.mobile-edit-active #mobileEditToggle {
+        background-color: #ef4444; /* Kırmızımsı renk (Düzenleme modu açık uyarısı) */
+        border-color: #ef4444;
+    }
+}
+
+/* DAY SELECTION BUTTONS */
+.day-btn {
+    flex: 1;
+    min-width: 40px;
+    padding: 8px 4px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+    color: #6b7280;
+}
+.dark .day-btn {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #9ca3af;
+}
+
+/* SEÇİLİ DURUM (ACTIVE) */
+.day-btn.selected {
+    background-color: #3b82f6; /* Mavi */
+    color: white;
+    border-color: #2563eb;
+    box-shadow: 0 2px 5px rgba(59, 130, 246, 0.3);
+}
+.dark .day-btn.selected {
+    background-color: #2563eb;
+    border-color: #1d4ed8;
+}
+
+/* DAILY BUTTON */
+.day-btn-daily {
+    flex: 2; /* Biraz daha geniş */
+    background-color: #f3f4f6;
+    color: #4b5563;
+}
+.day-btn-daily.selected {
+    background-color: #8b5cf6; /* Mor */
+    border-color: #7c3aed;
+    color: white;
+}

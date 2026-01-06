@@ -28,7 +28,14 @@ const TRANSLATIONS = {
             copied: 'Data copied to clipboard!',
             notificationTitle: 'Activity Starting!',
             notificationBody: '{title} starts now.',
-            overlapError: 'Conflict detected! This time slot overlaps with another activity.'
+            overlapError: 'Conflict detected! This time slot overlaps with another activity.',
+            lblDuplicate: 'Duplicate to other days',
+            btnSelectAll: 'All / Everyday',
+            mobileEditOn: 'Edit Mode: ON',
+            mobileEditOff: 'Edit Mode: Locked',
+            copySuccess: 'Event copied to selected days!',
+            btnDaily: 'Daily',
+            selectDayError: 'Please select at least one day!'
         }
     },
     tr: {
@@ -52,7 +59,14 @@ const TRANSLATIONS = {
             copied: 'Veri panoya kopyalandı!',
             notificationTitle: 'Etkinlik Başlıyor!',
             notificationBody: '{title} şimdi başlıyor.',
-            overlapError: 'Çakışma tespit edildi! Bu saat aralığında başka bir etkinlik var.'
+            overlapError: 'Çakışma tespit edildi! Bu saat aralığında başka bir etkinlik var.',
+            lblDuplicate: 'Diğer günlere kopyala',
+            btnSelectAll: 'Hepsi / Her Gün',
+            mobileEditOn: 'Düzenleme: AÇIK',
+            mobileEditOff: 'Düzenleme: Kilitli',
+            copySuccess: 'Etkinlik seçilen günlere kopyalandı!',
+            btnDaily: 'Her Gün',
+            selectDayError: 'Lütfen en az bir gün seçin!'
         }
     }
 };
@@ -550,18 +564,8 @@ const app = {
         document.getElementById('btnImport').textContent = tr.ui.import;
         document.getElementById('btnReset').textContent = tr.ui.reset;
         document.getElementById('btnClear').textContent = tr.ui.clear;
-        
 
-        const daySelect = document.getElementById('inputDay');
-        const currentVal = daySelect.value;
-        daySelect.innerHTML = '';
-        DAYS_KEYS.forEach((key, idx) => {
-            const opt = document.createElement('option');
-            opt.value = key;
-            opt.textContent = tr.days[idx];
-            daySelect.appendChild(opt);
-        });
-        daySelect.value = currentVal || 'Monday';
+        // --- DÜZELTME: Eski inputDay kod bloğu buradan silindi ---
 
         const picker = document.getElementById('colorPicker');
         const oldVal = document.getElementById('inputType').value;
@@ -570,7 +574,6 @@ const app = {
         this.categories.forEach(cat => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            // Dinamik stil
             btn.className = `h-10 rounded-lg border flex items-center justify-center gap-2 text-xs font-semibold transition-all overflow-hidden relative`;
             btn.style.backgroundColor = hexToRgba(cat.color, 0.1); 
             btn.style.borderColor = cat.color;
@@ -578,7 +581,6 @@ const app = {
 
             btn.innerHTML = `<span class="truncate px-1">${cat.name}</span>`;
 
-            // Seçili olma durumu
             if (oldVal === cat.id) {
                 btn.style.backgroundColor = hexToRgba(cat.color, 0.25);
                 btn.style.boxShadow = `0 0 0 2px white, 0 0 0 4px ${cat.color}`;
@@ -1191,11 +1193,11 @@ const app = {
         const iStart = document.getElementById('inputStart');
         const iEnd = document.getElementById('inputEnd');
         const iDur = document.getElementById('inputDuration');
-        const iDay = document.getElementById('inputDay');
+        // iDay KALDIRILDI
 
         const syncEnd = () => {
             const s = iStart.value;
-            const d = parseInt(iDur.value) || 0;
+            const d = Math.max(1, parseInt(iDur.value) || 0); 
             if(s) {
                 let mins = timeToMinutes(s) + d;
                 if(mins >= 24*60) mins -= 24*60; 
@@ -1217,7 +1219,10 @@ const app = {
         };
 
         const autoAdjustDuration = () => {
-            const day = iDay.value;
+            // DÜZELTME: Gün değerini butonlardan alıyoruz (seçili ilk gün)
+            const selectedBtn = document.querySelector('.day-btn.selected:not(.day-btn-daily)');
+            const day = selectedBtn ? selectedBtn.dataset.day : DAYS_KEYS[this.activeMobileDayIndex];
+            
             const startVal = iStart.value;
             const currentId = document.getElementById('eventId').value;
             
@@ -1240,7 +1245,7 @@ const app = {
             const maxDuration = nextEventStart - startMin;
             let currentDur = parseInt(iDur.value) || 60;
             if (currentDur > maxDuration) {
-                if (maxDuration <= 0) currentDur = 15; 
+                if (maxDuration <= 0) currentDur = 5; 
                 else currentDur = maxDuration;
                 iDur.value = currentDur;
                 syncEnd();
@@ -1251,9 +1256,8 @@ const app = {
             autoAdjustDuration();
             syncEnd();
         });
-        iDay.addEventListener('change', () => {
-            autoAdjustDuration();
-        });
+        
+        // iDay event listener KALDIRILDI
 
         iDur.addEventListener('input', syncEnd);
         iEnd.addEventListener('change', syncDur);
@@ -1282,6 +1286,39 @@ const app = {
         m.classList.add('active');
         document.getElementById('modalTitle').textContent = isEdit ? tr.ui.editTitle : tr.ui.newTitle;
         document.getElementById('btnDelete').classList.toggle('hidden', !isEdit);
+        const container = document.getElementById('daySelectionContainer');
+        container.innerHTML = '';
+        
+        // Şu anki seçili gün (Düzenleme moduysa event'in günü, yeniyse varsayılan)
+        const currentDay = document.getElementById('inputDay')?.value || 
+                          (isEdit ? this.events.find(e => e.id == document.getElementById('eventId').value)?.day : DAYS_KEYS[this.activeMobileDayIndex]);
+
+        // 1. Gün Butonlarını Oluştur (Pzt - Paz)
+        DAYS_KEYS.forEach((key, idx) => {
+            const btn = document.createElement('div');
+            btn.className = 'day-btn';
+            btn.textContent = tr.shortDays[idx]; // Pzt, Sal...
+            btn.dataset.day = key;
+            
+            // Eğer düzenleme modundaysak sadece o günü seç
+            if (key === currentDay) btn.classList.add('selected');
+            
+            btn.onclick = () => {
+                btn.classList.toggle('selected');
+                this.checkDailyButtonState(); // Daily butonunu kontrol et
+            };
+            container.appendChild(btn);
+        });
+
+        // 2. "Daily" (Her Gün) Butonu
+        const dailyBtn = document.createElement('div');
+        dailyBtn.className = 'day-btn day-btn-daily';
+        dailyBtn.id = 'btnDailyToggle';
+        dailyBtn.textContent = tr.ui.btnDaily;
+        dailyBtn.onclick = () => this.toggleDailySelection();
+        container.appendChild(dailyBtn);
+
+        this.checkDailyButtonState(); // Başlangıç kontrolü
     },
     closeModal() {
         document.getElementById('eventModal').classList.remove('active');
@@ -1302,8 +1339,7 @@ const app = {
         document.getElementById('inputDuration').value = 60;
         document.getElementById('inputAlarm').checked = false; 
         
-        const defaultDay = this.isMobile() ? DAYS_KEYS[this.activeMobileDayIndex] : 'Monday';
-        document.getElementById('inputDay').value = defaultDay;
+        // DÜZELTME: inputDay ataması kaldırıldı. openModal() otomatik seçecek.
 
         const picker = document.getElementById('colorPicker');
         Array.from(picker.children).forEach(c => c.style.boxShadow = 'none');
@@ -1316,7 +1352,7 @@ const app = {
     openEditModal(ev) {
         document.getElementById('eventId').value = ev.id;
         document.getElementById('inputTitle').value = ev.title;
-        document.getElementById('inputDay').value = ev.day;
+        // DÜZELTME: inputDay.value = ev.day; satırı SİLİNDİ
         document.getElementById('inputStart').value = ev.start;
         document.getElementById('inputDuration').value = ev.duration;
         document.getElementById('inputAlarm').checked = ev.alarm === true;
@@ -1335,28 +1371,91 @@ const app = {
     },
 
     saveFromModal() {
+        const tr = TRANSLATIONS[this.lang];
         const id = document.getElementById('eventId').value;
-        const data = {
-            id: id,
+        
+        // 1. Seçili günleri bul
+        const selectedBtns = document.querySelectorAll('.day-btn.selected:not(.day-btn-daily)');
+        if (selectedBtns.length === 0) {
+            alert(tr.ui.selectDayError);
+            return;
+        }
+
+        const selectedDays = Array.from(selectedBtns).map(b => b.dataset.day);
+
+        // 2. Temel veri objesi (Gün hariç)
+        const baseData = {
             title: document.getElementById('inputTitle').value,
-            day: document.getElementById('inputDay').value,
             start: document.getElementById('inputStart').value,
             duration: parseInt(document.getElementById('inputDuration').value),
             type: document.getElementById('inputType').value,
             alarm: document.getElementById('inputAlarm').checked
         };
 
-        if (this.checkOverlap(data)) {
-            alert(this.t('ui.overlapError'));
-            return; 
+        // 3. Mevcut etkinliği listeden geçici olarak çıkar (Güncelleme mantığı için)
+        // Böylece eski günü silip yeni seçilen günlere ekleyeceğiz.
+        const originalEventIndex = this.events.findIndex(e => e.id == id);
+        let originalIdUsed = false;
+
+        if (originalEventIndex > -1) {
+            this.events.splice(originalEventIndex, 1);
         }
 
-        const idx = this.events.findIndex(e => e.id == id);
-        if(idx > -1) this.events[idx] = data;
-        else this.events.push(data);
+        // 4. Seçili her gün için etkinlik oluştur
+        selectedDays.forEach((day, index) => {
+            // İlk gün için orijinal ID'yi koru (varsa), diğerleri için yeni ID üret
+            // Bu sayede en az bir tane "ana" etkinlik korunmuş olur.
+            let newId;
+            if (!originalIdUsed && originalEventIndex > -1) {
+                 newId = id; 
+                 originalIdUsed = true;
+            } else {
+                 newId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+            }
+
+            const newEvent = {
+                ...baseData,
+                id: newId,
+                day: day
+            };
+
+            // Çakışma kontrolü (İsterseniz aktif edebilirsiniz)
+            // if (this.checkOverlap(newEvent)) { ... }
+            
+            this.events.push(newEvent);
+        });
 
         this.save();
         this.closeModal();
+    },
+    // Tüm günleri seç (Everyday)
+    selectAllDays() {
+        const checkboxes = document.querySelectorAll('.day-duplicate-checkbox');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+    },
+
+    // Mobil Düzenleme Modunu Aç/Kapa
+    toggleMobileEditMode() {
+        const body = document.body;
+        const icon = document.getElementById('mobileEditIcon');
+        const tr = TRANSLATIONS[this.lang];
+
+        body.classList.toggle('mobile-edit-active');
+        const isActive = body.classList.contains('mobile-edit-active');
+
+        if (isActive) {
+            icon.setAttribute('data-lucide', 'unlock');
+            // Kullanıcıya bilgi ver (kısa süreli)
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-24 left-6 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg z-50 animate-bounce';
+            toast.textContent = tr.ui.mobileEditOn;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        } else {
+            icon.setAttribute('data-lucide', 'lock');
+        }
+        lucide.createIcons();
     },
 
     resetSchedule() {
@@ -1439,7 +1538,7 @@ const app = {
 
         if (s.direction === 'end') {
             newDur = s.originalDuration + diffMin;
-            if (newDur < 15) newDur = 15; 
+            if (newDur < 1) newDur = 1; 
             
             const minHeight = 15 * s.pxPerMin;
             let newPixelHeight = s.startHeight + diffY;
@@ -1451,12 +1550,12 @@ const app = {
             newStart = s.originalStartMin + diffMin;
             newDur = s.originalDuration - diffMin;
 
-            if (newDur < 15) {
-                newDur = 15;
-                newStart = s.originalStartMin + s.originalDuration - 15;
+            if (newDur < 1) {
+                newDur = 1;
+                newStart = s.originalStartMin + s.originalDuration - 1;
             }
 
-            const minHeight = 15 * s.pxPerMin;
+            const minHeight = 1 * s.pxPerMin;
             let newPixelHeight = s.startHeight - diffY;
             let newMarginTop = s.startMarginTop + diffY;
 
@@ -1746,6 +1845,34 @@ const app = {
         
         // İçeriği göster
         document.getElementById(`tabContent-${tabName}`).classList.remove('hidden');
+    },
+
+    toggleDailySelection() {
+        const btns = document.querySelectorAll('.day-btn:not(.day-btn-daily)');
+        const dailyBtn = document.getElementById('btnDailyToggle');
+        const isSelected = dailyBtn.classList.contains('selected');
+
+        if (isSelected) {
+            // Hepsini kaldır
+            btns.forEach(b => b.classList.remove('selected'));
+            dailyBtn.classList.remove('selected');
+        } else {
+            // Hepsini seç
+            btns.forEach(b => b.classList.add('selected'));
+            dailyBtn.classList.add('selected');
+        }
+    },
+
+    checkDailyButtonState() {
+        const btns = document.querySelectorAll('.day-btn:not(.day-btn-daily)');
+        const selectedCount = document.querySelectorAll('.day-btn.selected:not(.day-btn-daily)').length;
+        const dailyBtn = document.getElementById('btnDailyToggle');
+        
+        if (selectedCount === 7) {
+            dailyBtn.classList.add('selected');
+        } else {
+            dailyBtn.classList.remove('selected');
+        }
     },
 };
 
