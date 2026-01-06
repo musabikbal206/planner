@@ -1048,19 +1048,106 @@ const app = {
     },
     importData() {
         const tr = TRANSLATIONS[this.lang];
-        const json = prompt(tr.ui.importPrompt);
-        if(json) {
+        
+        // 1. Overlay (Arka plan karartma) oluştur
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        overlay.style.zIndex = '9999';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+
+        // 2. Kutu (Container) oluştur
+        const container = document.createElement('div');
+        container.style.backgroundColor = this.isDark ? '#1f2937' : '#ffffff';
+        container.style.color = this.isDark ? '#ffffff' : '#000000';
+        container.style.padding = '20px';
+        container.style.borderRadius = '12px';
+        container.style.width = '90%';
+        container.style.maxWidth = '500px';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '15px';
+        container.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+
+        // 3. Başlık
+        const title = document.createElement('h3');
+        title.textContent = this.lang === 'tr' ? 'Veri Yükle (Import)' : 'Import Data';
+        title.style.margin = '0';
+        title.style.fontSize = '1.2rem';
+
+        // 4. Metin Alanı (Textarea) - Sınırsız yapıştırma için
+        const textarea = document.createElement('textarea');
+        textarea.placeholder = this.lang === 'tr' ? 'JSON kodunu buraya yapıştırın...' : 'Paste JSON code here...';
+        textarea.style.width = '100%';
+        textarea.style.height = '250px'; // Yüksekliği artırdık
+        textarea.style.border = '1px solid #ccc';
+        textarea.style.borderRadius = '8px';
+        textarea.style.padding = '10px';
+        textarea.style.fontSize = '12px';
+        textarea.style.fontFamily = 'monospace';
+        textarea.style.backgroundColor = this.isDark ? '#374151' : '#f9fafb';
+        textarea.style.color = this.isDark ? '#fff' : '#000';
+        textarea.style.resize = 'none';
+
+        // 5. Butonlar
+        const btnContainer = document.createElement('div');
+        btnContainer.style.display = 'flex';
+        btnContainer.style.gap = '10px';
+        btnContainer.style.justifyContent = 'flex-end';
+
+        const btnCancel = document.createElement('button');
+        btnCancel.textContent = this.lang === 'tr' ? 'İptal' : 'Cancel';
+        btnCancel.style.padding = '10px 20px';
+        btnCancel.style.borderRadius = '6px';
+        btnCancel.style.border = '1px solid #ccc';
+        btnCancel.onclick = () => document.body.removeChild(overlay);
+
+        const btnSave = document.createElement('button');
+        btnSave.textContent = this.lang === 'tr' ? 'YÜKLE' : 'IMPORT';
+        btnSave.style.backgroundColor = '#3b82f6';
+        btnSave.style.color = 'white';
+        btnSave.style.padding = '10px 20px';
+        btnSave.style.borderRadius = '6px';
+        btnSave.style.fontWeight = 'bold';
+        
+        // --- YÜKLEME MANTIĞI ---
+        btnSave.onclick = () => {
+            const json = textarea.value;
+            if(!json) return;
+
             try {
                 const parsed = JSON.parse(json);
                 if(Array.isArray(parsed)) {
                     this.events = parsed;
                     this.save();
-                    alert("OK!");
-                } else throw new Error();
+                    this.renderGrid();
+                    document.body.removeChild(overlay);
+                    alert(this.lang === 'tr' ? 'Program başarıyla yüklendi!' : 'Schedule imported successfully!');
+                } else {
+                    throw new Error();
+                }
             } catch(e) {
-                alert(tr.ui.importError);
+                alert(tr.ui.importError + "\n(JSON Hatası)");
             }
-        }
+        };
+
+        // 6. Elemanları birleştir
+        btnContainer.appendChild(btnCancel);
+        btnContainer.appendChild(btnSave);
+        container.appendChild(title);
+        container.appendChild(textarea);
+        container.appendChild(btnContainer);
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+        
+        // Mobilde klavye açılınca odaklanması için
+        setTimeout(() => textarea.focus(), 100);
     },
 
     save() {
@@ -1202,6 +1289,7 @@ const app = {
     openSettingsModal() {
         document.getElementById('settingsModal').classList.add('active');
         this.renderCategorySettings(); 
+        this.switchTab('general'); // Varsayılan olarak Genel sekmesini aç
     },
     closeSettingsModal() {
         document.getElementById('settingsModal').classList.remove('active');
@@ -1551,7 +1639,114 @@ const app = {
         this.renderCategorySettings(); 
         this.updateUITexts(); 
         this.renderGrid(); 
-    }
+    },
+
+    // --- AI PROMPT OLUŞTURUCU ---
+    openAIPromptModal() {
+        const tr = TRANSLATIONS[this.lang];
+        
+        // 1. Mevcut kategorileri listele (Yapay zeka bilsin)
+        let catList = this.categories.map(c => `- ID: "${c.id}" (Use for: ${c.name})`).join('\n');
+
+        // 2. Prompt Metnini Oluştur
+        const promptText = `
+            I want you to act as a Schedule JSON Generator for my app.
+            Please create a weekly schedule based on the request below.
+
+            RULES:
+            1. Output MUST be a valid JSON array of objects.
+            2. DO NOT wrap the output in markdown code blocks (like \`\`\`json). Just raw JSON.
+            3. Use the following schema for each event:
+            {
+            "id": "unique_string_id",
+            "day": "Monday", // Options: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+            "start": "09:30", // Format: HH:MM (24-hour)
+            "duration": 60, // In minutes (integer)
+            "title": "Activity Name",
+            "type": "category_id", // Must be one of the IDs listed below
+            "alarm": false
+            }
+
+            AVAILABLE CATEGORIES (Use the ID exactly):
+            ${catList}
+
+            MY REQUEST:
+            [WRITE YOUR REQUEST HERE - e.g., "Create a study schedule for a student who wakes up at 7 AM..."]
+            `.trim();
+
+        // 3. Arayüzü Oluştur (Import ekranının aynısı)
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+        const container = document.createElement('div');
+        container.style.cssText = `background:${this.isDark?'#1f2937':'#ffffff'};color:${this.isDark?'#ffffff':'#000000'};padding:20px;border-radius:12px;width:90%;max-width:600px;display:flex;flex-direction:column;gap:15px;box-shadow:0 10px 25px rgba(0,0,0,0.5);`;
+
+        const title = document.createElement('h3');
+        title.textContent = this.lang === 'tr' ? 'Yapay Zeka Komutu (AI Prompt)' : 'AI Prompt Generator';
+        title.style.fontSize = '1.2rem';
+        title.style.fontWeight = 'bold';
+
+        const desc = document.createElement('p');
+        desc.style.fontSize = '0.9rem';
+        desc.style.opacity = '0.8';
+        desc.textContent = this.lang === 'tr' 
+            ? 'Bu metni kopyalayın ve ChatGPT/Gemini\'ye yapıştırın. En alta kendi isteğinizi ekleyin.' 
+            : 'Copy this text and paste it into ChatGPT/Gemini. Add your specific request at the bottom.';
+
+        const textarea = document.createElement('textarea');
+        textarea.value = promptText;
+        textarea.style.cssText = `width:100%;height:300px;border:1px solid #ccc;border-radius:8px;padding:10px;font-size:12px;font-family:monospace;background:${this.isDark?'#374151':'#f9fafb'};color:${this.isDark?'#fff':'#000'};resize:none;`;
+
+        const btnContainer = document.createElement('div');
+        btnContainer.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
+
+        const btnCancel = document.createElement('button');
+        btnCancel.textContent = this.lang === 'tr' ? 'Kapat' : 'Close';
+        btnCancel.style.cssText = 'padding:10px 20px;border-radius:6px;border:1px solid #ccc;';
+        btnCancel.onclick = () => document.body.removeChild(overlay);
+
+        const btnCopy = document.createElement('button');
+        btnCopy.textContent = this.lang === 'tr' ? 'Kopyala' : 'Copy Prompt';
+        btnCopy.style.cssText = 'background:#8b5cf6;color:white;padding:10px 20px;border-radius:6px;font-weight:bold;display:flex;align-items:center;gap:5px;';
+        btnCopy.innerHTML = `<i data-lucide="copy" style="width:16px;"></i> ${btnCopy.textContent}`;
+        
+        btnCopy.onclick = () => {
+            textarea.select();
+            document.execCommand('copy');
+            const originalText = btnCopy.innerHTML;
+            btnCopy.innerHTML = `<i data-lucide="check" style="width:16px;"></i> ${this.lang === 'tr' ? 'Kopyalandı!' : 'Copied!'}`;
+            setTimeout(() => btnCopy.innerHTML = originalText, 2000);
+        };
+
+        btnContainer.appendChild(btnCancel);
+        btnContainer.appendChild(btnCopy);
+        container.appendChild(title);
+        container.appendChild(desc);
+        container.appendChild(textarea);
+        container.appendChild(btnContainer);
+        overlay.appendChild(container);
+        document.body.appendChild(overlay);
+        lucide.createIcons();
+    },
+
+    switchTab(tabName) {
+        // Tüm butonları pasif yap
+        ['general', 'categories', 'data'].forEach(t => {
+            const btn = document.getElementById(`tabBtn-${t}`);
+            const content = document.getElementById(`tabContent-${t}`);
+            
+            // Stilleri sıfırla
+            btn.className = 'flex-1 py-3 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 dark:hover:text-gray-300 transition-colors';
+            content.classList.add('hidden');
+        });
+
+        // Seçilen butonu aktif yap
+        const activeBtn = document.getElementById(`tabBtn-${tabName}`);
+        activeBtn.className = 'flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400 transition-colors';
+        
+        // İçeriği göster
+        document.getElementById(`tabContent-${tabName}`).classList.remove('hidden');
+    },
 };
 
 
